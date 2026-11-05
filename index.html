@@ -1218,6 +1218,8 @@
                     const icon = L.divIcon({className:'transparent-icon',iconSize:[0,0],iconAnchor:[0,0],html});
                     const badgeMarker=L.marker(badgeAnchor,{icon,interactive:true,draggable:true,bubblingMouseEvents:false}).addTo(satelliteMap);
                     badgeMarker._badgeAnchor=badgeAnchor;
+                    badgeMarker._badgeBaseAnchor=L.latLng(center);
+                    badgeMarker._zoneId=z.id;
                     makeBadgeDraggable(badgeMarker,z,satelliteMap,'satellite');
                     satelliteZoneBadgeMarkers[z.id] = badgeMarker;
                 }
@@ -1235,11 +1237,65 @@
             });
         }
         function layoutSatelliteBadges() {
-            // Deliberately do not auto-offset badges. Their stored geographic
-            // anchor is the exact point selected by the user and must remain fixed
-            // through map pan/zoom. Leaflet itself keeps the marker in map space.
+            if (!satelliteMap) return;
+
+            // Automatically spread untouched badges in screen space so several
+            // zones at nearby coordinates remain readable on narrow mobile screens.
+            // A manually dragged badge always keeps its saved geographic anchor.
+            const occupied = [];
+            const container = satelliteMap.getContainer();
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const candidates = [
+                [0,0], [0,-76], [76,0], [0,76], [-76,0],
+                [76,-76], [76,76], [-76,76], [-76,-76],
+                [0,-152], [152,0], [0,152], [-152,0],
+                [152,-76], [152,76], [-152,-76], [-152,76],
+                [0,-228], [228,0], [0,228], [-228,0]
+            ];
+
             Object.values(satelliteZoneBadgeMarkers).forEach(marker => {
-                if (marker._badgeAnchor) marker.setLatLng(marker._badgeAnchor);
+                const zone = satelliteZones.find(z => z.id === marker._zoneId);
+                if (!zone) return;
+
+                if (zone.badgeAnchorMode === 'manual' && validBadgeAnchor(zone.badgeAnchor)) {
+                    marker.setLatLng([Number(zone.badgeAnchor.lat), Number(zone.badgeAnchor.lng)]);
+                    const manualEl = marker.getElement()?.querySelector('.manpower-badge');
+                    if (manualEl) {
+                        const p = satelliteMap.latLngToContainerPoint(marker.getLatLng());
+                        occupied.push({left:p.x-manualEl.offsetWidth/2, right:p.x+manualEl.offsetWidth/2,
+                            top:p.y-manualEl.offsetHeight/2, bottom:p.y+manualEl.offsetHeight/2});
+                    }
+                    return;
+                }
+
+                const base = marker._badgeBaseAnchor || marker._badgeAnchor;
+                if (!base) return;
+                const basePoint = satelliteMap.latLngToContainerPoint(base);
+                const el = marker.getElement()?.querySelector('.manpower-badge');
+                const badgeW = el ? el.offsetWidth : 140;
+                const badgeH = el ? el.offsetHeight : 58;
+                let chosen = null;
+
+                for (const [dx,dy] of candidates) {
+                    const x = basePoint.x + dx, y = basePoint.y + dy;
+                    const rect = {left:x-badgeW/2-8, right:x+badgeW/2+8,
+                        top:y-badgeH/2-8, bottom:y+badgeH/2+8};
+                    if (rect.left < 4 || rect.right > width-4 || rect.top < 4 || rect.bottom > height-4) continue;
+                    const collision = occupied.some(r => !(rect.right < r.left || rect.left > r.right ||
+                        rect.bottom < r.top || rect.top > r.bottom));
+                    if (!collision) { chosen = {x,y,rect}; break; }
+                }
+
+                if (!chosen) {
+                    const [dx,dy] = candidates[occupied.length % candidates.length];
+                    const x = Math.max(badgeW/2+4, Math.min(width-badgeW/2-4, basePoint.x+dx));
+                    const y = Math.max(badgeH/2+4, Math.min(height-badgeH/2-4, basePoint.y+dy));
+                    chosen = {x,y,rect:{left:x-badgeW/2-8,right:x+badgeW/2+8,top:y-badgeH/2-8,bottom:y+badgeH/2+8}};
+                }
+
+                occupied.push(chosen.rect);
+                marker.setLatLng(satelliteMap.containerPointToLatLng([chosen.x,chosen.y]));
             });
         }
         function escapeHtml(value) { return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
