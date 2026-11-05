@@ -117,6 +117,10 @@
         }
         .ui-btn:hover { background: #4da8da; color: #000; }
         
+        .panel-close { float:right; width:30px!important; height:30px; margin:-5px -5px 0 8px!important; padding:0!important; border:1px solid #4da8da!important; border-radius:6px!important; background:#1e1e2f!important; color:#fff!important; font-size:21px!important; cursor:pointer; }
+        .transfer-panel { top:155px; bottom:auto; max-height:calc(100vh - 180px); overflow:auto; }
+        .transfer-panel label { display:block; color:#b9c5d4; font-size:12px; margin:8px 0 4px; }
+        .transfer-panel select { width:100%; padding:9px; border-radius:6px; background:#1e1e2f; color:#fff; border:1px solid #4da8da; }
         .connection-panel { position:absolute; left:15px; bottom:15px; z-index:1200; width:min(330px,calc(100vw - 30px)); background:rgba(20,20,35,.96); border:1px solid #4da8da; border-radius:9px; padding:12px; box-shadow:0 5px 18px rgba(0,0,0,.45); display:none; }
         .connection-panel.visible { display:block; }
         .connection-panel strong { color:#fff; }
@@ -143,6 +147,7 @@
         <button id="satelliteModeBtn" class="ui-btn map-mode-btn" onclick="switchMapView('satellite')">Satellite View</button>
         <button id="recenterBtn" class="ui-btn" onclick="recenterCurrentMap()">&#x26F6; Recenter</button>
         <button class="ui-btn" onclick="toggleConnectionPanel()">↗ Connections</button>
+        <button class="ui-btn" onclick="toggleTransferPanel()">⇄ Transfer zones</button>
     </div>
 
     <!-- The Slide-In Menu -->
@@ -206,6 +211,7 @@
         <div id="map"></div>
         <div id="satellite-map"></div>
         <div id="satellitePanel" class="satellite-panel">
+            <button class="panel-close" type="button" aria-label="Close plant location panel" onclick="closeSatellitePanel()">×</button>
             <strong>Plant location</strong>
             <p>Enter the plant's latitude and longitude, or click directly on the satellite map to place the site marker. The initial view is only a general India view, not your plant location.</p>
             <div class="coordinate-row">
@@ -214,6 +220,19 @@
             </div>
             <button onclick="goToPlantLocation()">Go to plant location</button>
             <p id="plantLocationStatus">No plant location saved yet.</p>
+        </div>
+        <div id="transferPanel" class="connection-panel transfer-panel">
+            <strong>Transfer engineering zones to satellite</strong>
+            <p>Align the two independent maps using three matching reference points, then transfer a selected engineering zone.</p>
+            <label for="transferZoneSelect">Engineering zone to transfer</label>
+            <select id="transferZoneSelect"><option value="">-- Select engineering zone --</option></select>
+            <div class="connection-actions">
+                <button class="primary" onclick="beginZoneAlignment()">Align maps (3 points)</button>
+                <button onclick="transferSelectedZone()" id="transferZoneBtn" disabled>Transfer selected zone</button>
+                <button onclick="cancelZoneAlignment()">Cancel alignment</button>
+                <button onclick="toggleTransferPanel()">Close</button>
+            </div>
+            <p id="transferStatus" class="connection-status">No alignment saved. Engineering zones remain unchanged.</p>
         </div>
         <div id="satelliteAttributionNote" class="satellite-attribution-note" style="display:none">Satellite imagery © Esri and its data providers</div>
         <div id="connectionPanel" class="connection-panel">
@@ -247,6 +266,9 @@
         let satelliteDrawnItems = null;
         let satelliteZoneBadgeMarkers = {};
         let satelliteDrawControl = null;
+        let zoneAlignment = { active:false, phase:'source', pairs:[] };
+        let zoneAlignmentTransform = JSON.parse(localStorage.getItem('plant_zone_alignment_v1') || 'null');
+        let satellitePanelDismissed = false;
 
         function toggleSidebar() {
             document.body.classList.toggle('sidebar-closed');
@@ -264,6 +286,7 @@
             satelliteDrawnItems = new L.FeatureGroup().addTo(satelliteMap);
             renderConnectionRoutes();
             satelliteMap.on('click', function (event) {
+                if (zoneAlignment.active && currentMapView === 'satellite') { captureSatelliteAlignmentPoint(event.latlng); return; }
                 if (connectionDrawing && currentMapView === 'satellite') { addConnectionPoint(event.latlng); return; }
                 setPlantSite(event.latlng.lat, event.latlng.lng, true);
             });
@@ -292,7 +315,7 @@
             const engineering = view === 'engineering';
             document.getElementById('map').style.display = engineering ? 'block' : 'none';
             document.getElementById('satellite-map').style.display = engineering ? 'none' : 'block';
-            document.getElementById('satellitePanel').classList.toggle('visible', !engineering);
+            document.getElementById('satellitePanel').classList.toggle('visible', !engineering && !satellitePanelDismissed);
             document.getElementById('satelliteAttributionNote').style.display = engineering ? 'none' : 'block';
             document.getElementById('engineeringModeBtn').classList.toggle('active', engineering);
             document.getElementById('satelliteModeBtn').classList.toggle('active', !engineering);
@@ -332,7 +355,84 @@
             }
             setPlantSite(lat, lng, false);
             satelliteMap.setView([lat, lng], 17);
+            closeSatellitePanel();
         }
+
+        function closeSatellitePanel() {
+            satellitePanelDismissed = true;
+            document.getElementById('satellitePanel').classList.remove('visible');
+        }
+
+        function toggleTransferPanel() {
+            document.getElementById('transferPanel').classList.toggle('visible');
+            refreshTransferZoneOptions();
+        }
+
+        function refreshTransferZoneOptions() {
+            const select = document.getElementById('transferZoneSelect');
+            if (!select) return;
+            const previous = select.value;
+            select.innerHTML = '<option value="">-- Select engineering zone --</option>';
+            zones.forEach(z => { const opt=document.createElement('option'); opt.value=z.id; opt.textContent=(z.symbol ? z.symbol+' ' : '')+z.name+' ('+z.type+')'; select.appendChild(opt); });
+            if (zones.some(z=>z.id===previous)) select.value=previous;
+        }
+
+        function beginZoneAlignment() {
+            if (!satelliteMap) initializeSatelliteMap();
+            zoneAlignment={active:true,phase:'source',pairs:[]};
+            document.getElementById('transferStatus').textContent='Point 1: click a recognizable reference point on the Engineering Drawing, then switch to Satellite View and click the same physical point.';
+            switchMapView('engineering');
+        }
+
+        function captureEngineeringAlignmentPoint(latlng) {
+            if (!zoneAlignment.active || currentMapView!=='engineering' || zoneAlignment.phase!=='source') return false;
+            zoneAlignment.pendingSource=[latlng.lng,latlng.lat]; zoneAlignment.phase='target';
+            document.getElementById('transferStatus').textContent='Switch to Satellite View and click the same physical reference point.';
+            return true;
+        }
+
+        function captureSatelliteAlignmentPoint(latlng) {
+            if (!zoneAlignment.active || currentMapView!=='satellite' || zoneAlignment.phase!=='target') return false;
+            const projected=L.CRS.EPSG3857.project(latlng);
+            zoneAlignment.pairs.push({source:zoneAlignment.pendingSource,target:[projected.x,projected.y]});
+            if (zoneAlignment.pairs.length===3) {
+                const t=calculateAffineTransform(zoneAlignment.pairs);
+                if (!t) { cancelZoneAlignment(); document.getElementById('transferStatus').textContent='Alignment failed. Choose three non-collinear reference points.'; return; }
+                zoneAlignmentTransform=t; localStorage.setItem('plant_zone_alignment_v1',JSON.stringify(t));
+                zoneAlignment={active:false,phase:'source',pairs:[]};
+                document.getElementById('transferZoneBtn').disabled=false;
+                document.getElementById('transferStatus').textContent='Alignment saved. Select an engineering zone and transfer it.';
+                return;
+            }
+            zoneAlignment.phase='source';
+            const n=zoneAlignment.pairs.length+1;
+            document.getElementById('transferStatus').textContent='Reference point '+zoneAlignment.pairs.length+' saved. Switch to Engineering Drawing and click reference point '+n+'. Choose three well-spaced points.';
+            switchMapView('engineering');
+        }
+
+        function calculateAffineTransform(pairs) {
+            const a=pairs.map(p=>[p.source[0],p.source[1],1]);
+            const solve=values=>{ const m=a.map((r,i)=>[...r,values[i]]); for(let i=0;i<3;i++){let pivot=i;for(let j=i+1;j<3;j++)if(Math.abs(m[j][i])>Math.abs(m[pivot][i]))pivot=j;if(Math.abs(m[pivot][i])<1e-10)return null;[m[i],m[pivot]]=[m[pivot],m[i]];const d=m[i][i];for(let k=i;k<4;k++)m[i][k]/=d;for(let j=0;j<3;j++)if(j!==i){const f=m[j][i];for(let k=i;k<4;k++)m[j][k]-=f*m[i][k];}}return m.map(r=>r[3]);};
+            const x=solve(pairs.map(p=>p.target[0])),y=solve(pairs.map(p=>p.target[1]));return x&&y?{x,y}:null;
+        }
+
+        function transformEngineeringPoint(point) {
+            if(!zoneAlignmentTransform)return null;const t=zoneAlignmentTransform;
+            return L.CRS.EPSG3857.unproject(L.point(t.x[0]*point[0]+t.x[1]*point[1]+t.x[2],t.y[0]*point[0]+t.y[1]*point[1]+t.y[2]));
+        }
+
+        function transferSelectedZone() {
+            const id=document.getElementById('transferZoneSelect').value,src=zones.find(z=>z.id===id);
+            if(!src)return alert('Select an engineering zone first.');if(!zoneAlignmentTransform)return alert('Align the maps using three matching points first.');
+            const copy={id:'sz_transfer_'+Date.now(),name:src.name,type:src.type,status:src.status||'running',symbol:src.symbol||'',mapType:'satellite',transferredFrom:src.id};
+            if(src.type==='marker'){const ll=transformEngineeringPoint([src.latlng.lng,src.latlng.lat]);copy.latlng={lat:ll.lat,lng:ll.lng};}
+            else {const raw=src.latlngs;const pts=(Array.isArray(raw[0])?raw.flat(1):raw).map(p=>transformEngineeringPoint([p.lng,p.lat])).map(ll=>[ll.lat,ll.lng]);copy.latlngs=src.type==='polyline'?pts:[pts];}
+            satelliteZones.push(copy);localStorage.setItem('plant_satellite_zones_v1',JSON.stringify(satelliteZones));renderSatelliteZones();updateDropdowns();
+            document.getElementById('transferStatus').textContent='Transferred '+src.name+'. Verify and adjust its vertices with the satellite edit toolbar.';
+            satelliteMap.fitBounds(copy.type==='marker'?L.latLngBounds([copy.latlng,copy.latlng]).pad(1):L.latLngBounds(copy.latlngs).pad(.15));
+        }
+
+        function cancelZoneAlignment() { zoneAlignment={active:false,phase:'source',pairs:[]}; document.getElementById('transferStatus').textContent='Alignment cancelled. No map geometry was changed.'; }
 
         // --- INDEPENDENT CONNECTION ROUTES (engineering vs geographical) ---
         function toggleConnectionPanel() { document.getElementById('connectionPanel').classList.toggle('visible'); }
@@ -433,7 +533,10 @@
         L.imageOverlay('F_D1.jpg', bounds).addTo(map);
         map.fitBounds(bounds);
         engineeringConnectionLayer = new L.FeatureGroup().addTo(map);
-        map.on('click', function(event) { if (connectionDrawing && currentMapView === 'engineering') addConnectionPoint(event.latlng); });
+        map.on('click', function(event) {
+            if (zoneAlignment.active && currentMapView==='engineering') { captureEngineeringAlignmentPoint(event.latlng); return; }
+            if (connectionDrawing && currentMapView==='engineering') addConnectionPoint(event.latlng);
+        });
         engineeringEditControl = new L.Control.Draw({ draw:false, edit:{ featureGroup:engineeringConnectionLayer, remove:false } });
         map.addControl(engineeringEditControl);
         map.on(L.Draw.Event.EDITED, persistEditedConnections);
@@ -593,6 +696,7 @@
 
         function renderDashboard() { 
             updateDropdowns();
+            refreshTransferZoneOptions();
             renderWorkerList(); 
             renderMapMarkers();
             if (satelliteMap) renderSatelliteZones();

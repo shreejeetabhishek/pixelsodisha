@@ -1,33 +1,28 @@
-# Plant Tracker – Satellite Site-Layout Editing Update
+# Plant Tracker – Location Panel & Zone Transfer Update
 
-## What changed
+## What's updated
+- Added a close (×) control to the Plant location panel.
+- Clicking **Go to plant location** now saves/centres the map and closes the location panel.
+- Added **Transfer zones** workflow to copy existing engineering drawing zones to the satellite map.
+- Uses three matching reference points to calculate an affine transformation from engineering drawing coordinates to projected geographic coordinates.
+- Transfers markers, polygons/rectangles and polylines as independent satellite features.
+- Transferred satellite features can be adjusted with the satellite map's existing Leaflet Draw edit toolbar.
+- The alignment transform and transferred satellite zones are saved in browser LocalStorage.
 
-The Satellite View now has its own full editable site-layout layer, separate from the Engineering Drawing coordinates.
+## How to transfer an engineering zone
+1. Open **Transfer zones**.
+2. Select **Align maps (3 points)**.
+3. On the Engineering Drawing, click a recognizable physical reference point (for example, a building corner or conveyor junction).
+4. Switch to Satellite View and click the exact same physical point.
+5. Repeat for two more well-spaced, non-collinear reference points.
+6. Select an engineering zone from the dropdown and click **Transfer selected zone**.
+7. Verify the result and use the satellite edit toolbar to fine-tune its vertices.
 
-### Satellite map editing
-- Draw polygon zones and site boundaries.
-- Draw rectangles for plant areas/buildings.
-- Add equipment/site markers.
-- Draw polylines for roads, conveyors or other routes.
-- Edit vertices and move shapes with the Leaflet Draw edit toolbar.
-- Delete selected shapes with the delete toolbar.
-- Assign equipment symbols and operating status to satellite zones from Machine Settings.
-- Display zone labels, status indicators and assigned manpower badges.
-- Satellite zones and their geometry persist in browser LocalStorage under `plant_satellite_zones_v1`.
-
-### Engineering drawing
-- Existing Engineering Drawing workspace and its zones remain separate and unchanged.
-- Existing independent connection-route functionality is retained.
-
-## Important coordinate behaviour
-Engineering drawing coordinates and satellite latitude/longitude are intentionally independent. A polygon drawn on the engineering schematic is not automatically projected onto the satellite map because the uploaded process schematic is not a geographically surveyed site plan. Recreate/draw the real site boundaries and equipment positions in Satellite View, using the engineering drawing as a reference. Shared equipment IDs and database synchronization can be added in a later backend phase.
+## Important accuracy note
+The uploaded F_D1 drawing is a process schematic, not a surveyed site plan. Its equipment and process layout may not be geographically scaled. Three-point affine alignment is a best-fit mapping method for a reasonably plan-like drawing; it cannot make a non-geographic process schematic physically accurate. Use identifiable matching site features and verify every transferred object manually. For a schematic with distorted/non-uniform geometry, manually redraw the satellite footprint or use more advanced control-point warping in a later phase.
 
 ## Deployment
-1. Extract the ZIP.
-2. Replace `index.html` in the existing GitHub repository.
-3. Keep `F_D1.jpg` in the same directory as `index.html`.
-4. Commit and push the changes.
-5. Open Satellite View. Use the Leaflet drawing toolbar on the left to draw polygons, rectangles, markers and polylines. Use the edit and delete tools to modify them.
-
-## Storage note
-This update continues to use browser LocalStorage. Satellite zones are saved on the device/browser where they are created; they are not yet synchronized across multiple devices or users.
+- Replace `index.html` in the GitHub repository.
+- Keep `F_D1.jpg` in the same directory.
+- Commit and push the changes.
+- Existing localStorage data remains in the same browser because the existing storage keys are retained.
