@@ -1,143 +1,134 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#090a0b">
-<title>Pixels Odisha — Visual Stories</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
-<style>
-:root{--black:#090a0b;--paper:#ece6d9;--white:#f7f5ef;--muted:#aaa9a3;--gold:#d7a33b;--line:#26282a;--max:1180px}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--black);color:var(--white);font-family:"DM Sans",sans-serif}
-img{width:100%;display:block}a{text-decoration:none;color:inherit}
-.container{width:min(var(--max),90%);margin:auto}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Flow Tracker - Offline Prototype</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Default Desktop Layout (Side-by-Side) */
+        #sidebar { width: 320px; background: #f8f9fa; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; box-sizing: border-box; }
+        #map { flex-grow: 1; height: 100vh; background-color: #e5e5e5; }
+        
+        h2 { font-size: 18px; margin-top: 0; }
+        .control-group { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #ccc; }
+        input, select, button { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        button { background: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #004494; }
+        
+        .worker-card { background: white; padding: 10px; margin-bottom: 10px; border: 1px solid #eee; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .worker-name { font-weight: bold; font-size: 14px; }
+        
+        .manpower-badge { background: #d32f2f; color: white; font-weight: bold; padding: 5px 10px; border-radius: 12px; text-align: center; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 12px; white-space: nowrap; }
+        .optimal { background: #2e7d32; }
 
-/* NAV */
-.nav{height:68px;position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:0 5%;background:rgba(9,10,11,.78);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.08)}
-.logo{font-size:13px;font-weight:700;letter-spacing:2.6px}.logo b{color:var(--gold)}
-.nav-links{display:flex;gap:28px;font-size:12px;color:#d0cfca}.nav-links a:hover{color:var(--gold)}
-.nav-button{font-size:11px;border:1px solid #393a3b;border-radius:100px;padding:8px 14px}.nav-button:hover{background:#fff;color:#111}
-
-/* HERO */
-.hero{min-height:100svh;position:relative;display:flex;align-items:flex-end;overflow:hidden}
-.hero-bg{position:absolute;inset:0;background-image:linear-gradient(180deg,rgba(0,0,0,.35) 15%,rgba(0,0,0,.18) 42%,rgba(0,0,0,.9) 100%),url("assets/dhabaleswara.jpg");background-size:cover;background-position:center;filter:saturate(.85)}
-.hero-content{position:relative;z-index:2;width:min(var(--max),90%);margin:0 auto;padding:0 0 80px}
-.eyebrow{color:var(--gold);font-size:10px;text-transform:uppercase;letter-spacing:3px;margin-bottom:15px}
-.hero h1{font-family:"Playfair Display",serif;font-weight:500;font-size:clamp(54px,8vw,108px);line-height:.9;letter-spacing:-3px;margin:0;max-width:850px}
-.hero h1 i{color:#d8d4ca;font-weight:500}
-.hero-bottom{margin-top:22px;display:flex;align-items:center;gap:18px}
-.hero-bottom p{margin:0;color:#c3c1bb;font-size:13px;max-width:430px;line-height:1.55}
-.circle-arrow{width:44px;height:44px;border:1px solid #666;border-radius:50%;display:grid;place-items:center}
-
-/* SECTIONS */
-.section{padding:88px 0}.section.dark{background:#0d0f10}
-.section-head{display:flex;justify-content:space-between;align-items:end;gap:30px;margin-bottom:34px}
-.eyebrow2{font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:2.7px;margin-bottom:10px}
-h2{font-family:"Playfair Display",serif;font-size:clamp(39px,5vw,65px);line-height:.98;font-weight:500;margin:0;letter-spacing:-1px}
-.section-head>p{max-width:320px;color:var(--muted);font-size:12px;line-height:1.6}
-
-/* ABOUT */
-.about-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:90px;align-items:start}
-.about-lead{font-family:"Playfair Display",serif;font-size:clamp(27px,3vw,40px);line-height:1.18;color:#e5e1d8}
-.about-copy{font-size:14px;line-height:1.75;color:#a8a8a2}
-.stats{display:flex;gap:35px;margin-top:28px;padding-top:20px;border-top:1px solid var(--line)}
-.stats strong{font-size:21px;display:block}.stats small{color:#777;text-transform:uppercase;letter-spacing:1.2px;font-size:9px}
-
-/* FEATURE */
-.feature{display:grid;grid-template-columns:1.35fr .65fr;gap:14px}
-.feature-main,.feature-side article{position:relative;overflow:hidden;border-radius:2px;background:#151718}
-.feature-main{min-height:650px}.feature-side{display:grid;grid-template-rows:1fr 1fr;gap:14px}.feature-side article{min-height:318px}
-.feature img{height:100%;object-fit:cover;transition:transform .65s ease}.feature article:hover img{transform:scale(1.04)}
-.feature article:after{content:"";position:absolute;inset:35% 0 0;background:linear-gradient(transparent,rgba(0,0,0,.9))}
-.tag{position:absolute;top:17px;left:17px;z-index:3;border:1px solid rgba(255,255,255,.3);border-radius:100px;padding:5px 9px;font-size:9px;text-transform:uppercase;letter-spacing:1.4px;background:rgba(0,0,0,.25);backdrop-filter:blur(8px)}
-.caption{position:absolute;left:20px;right:20px;bottom:20px;z-index:3}.caption h3{font-family:"Playfair Display",serif;font-weight:500;font-size:30px;line-height:1.05;margin:0}.caption p{font-size:11px;color:#bbb;margin:6px 0 0}
-
-/* GALLERY */
-.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.gallery-card{position:relative;overflow:hidden}.gallery-card img{height:470px;object-fit:cover;transition:.6s}.gallery-card:hover img{transform:scale(1.035)}
-.gallery-card:after{content:"";position:absolute;inset:55% 0 0;background:linear-gradient(transparent,rgba(0,0,0,.8))}
-.gallery-info{position:absolute;left:18px;bottom:17px;z-index:2}.gallery-info small{color:var(--gold);font-size:9px;text-transform:uppercase;letter-spacing:1.5px}.gallery-info h3{font-family:"Playfair Display",serif;font-size:25px;font-weight:500;margin:3px 0 0}
-
-/* MANIFESTO */
-.manifesto{background:var(--paper);color:#171717;text-align:center;padding:105px 5%}.manifesto .eyebrow2{color:#986d21}.manifesto h2{max-width:850px;margin:auto;font-size:clamp(38px,5.8vw,72px)}.manifesto p{font-size:12px;color:#666;margin:18px 0 0}
-
-/* INSTAGRAM */
-.insta{border:1px solid var(--line);padding:42px;display:flex;justify-content:space-between;align-items:center;gap:30px;background:#0e1011}.insta h2{font-size:clamp(36px,4vw,55px)}.insta p{font-size:12px;color:#858681;margin:7px 0 0}.insta a{border:1px solid #3b3c3d;border-radius:100px;padding:12px 17px;font-size:11px;white-space:nowrap}.insta a:hover{background:#fff;color:#111}
-
-/* FOOTER */
-footer{border-top:1px solid var(--line);padding:25px 0;color:#666;font-size:10px}.footer-row{display:flex;justify-content:space-between}
-
-/* MOBILE */
-@media(max-width:760px){
- .nav{height:60px;padding:0 5%}.nav-links{display:none}.nav-button{padding:7px 11px}
- .hero-content{padding-bottom:60px}.hero h1{font-size:58px;letter-spacing:-2.5px}.hero-bottom p{font-size:12px}.circle-arrow{width:40px;height:40px}
- .section{padding:65px 0}.section-head{display:block;margin-bottom:25px}.section-head>p{margin-top:13px}
- .about-grid{grid-template-columns:1fr;gap:25px}.about-copy{font-size:13px}.stats{gap:28px}
- .feature{grid-template-columns:1fr}.feature-main{min-height:500px}.feature-side{grid-template-columns:1fr 1fr;grid-template-rows:none}.feature-side article{min-height:260px}.caption h3{font-size:25px}
- .gallery{grid-template-columns:1fr}.gallery-card img{height:430px}
- .manifesto{padding:75px 7%}.insta{padding:30px;display:block}.insta a{display:inline-block;margin-top:22px}.footer-row{display:block}.footer-row span{display:block;margin:4px 0}
-}
-@media(max-width:430px){
- .hero h1{font-size:52px}.feature-side{grid-template-columns:1fr}.feature-side article{min-height:330px}
-}
-</style>
+        /* Responsive Mobile Layout (Stacked Vertically) */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            #map { height: 55vh; width: 100%; flex-grow: 0; }
+            #sidebar { height: 45vh; width: 100%; border-right: none; border-top: 2px solid #ddd; }
+        }
+    </style>
 </head>
 <body>
-<nav class="nav">
- <a class="logo" href="#home">PIXELS <b>ODISHA</b></a>
- <div class="nav-links"><a href="#stories">Stories</a><a href="#gallery">Gallery</a><a href="#about">About</a></div>
- <a class="nav-button" href="https://www.instagram.com/pixels_odisha" target="_blank">Instagram ↗</a>
-</nav>
-
-<header class="hero" id="home">
- <div class="hero-bg"></div>
- <div class="hero-content">
-  <div class="eyebrow">Visual stories from Odisha</div>
-  <h1>See Odisha.<br><i>Feel the story.</i></h1>
-  <div class="hero-bottom"><p>Photography, travel, culture and cinematic stories from the places that make Odisha unforgettable.</p><a class="circle-arrow" href="#stories">↓</a></div>
- </div>
-</header>
-
-<section class="section" id="about">
- <div class="container">
-  <div class="about-grid">
-   <div><div class="eyebrow2">The idea</div><div class="about-lead">Not just photographs. A visual archive of the soul of Odisha.</div></div>
-   <div class="about-copy">Pixels Odisha explores temples, landscapes, traditions and everyday life through a cinematic lens. We look for the details that turn a location into a memory.
-    <div class="stats"><div><strong>351+</strong><small>Posts</small></div><div><strong>2.5K</strong><small>Followers</small></div><div><strong>Odisha</strong><small>Our home</small></div></div>
-   </div>
-  </div>
- </div>
-</section>
-
-<section class="section dark" id="stories">
- <div class="container">
-  <div class="section-head"><div><div class="eyebrow2">Featured stories</div><h2>Places with a story.</h2></div><p>From sacred spaces to quiet waters, discover Odisha through our lens.</p></div>
-  <div class="feature">
-   <article class="feature-main"><img src="assets/dhabaleswara.jpg" alt="Shri Dhabaleswara Mahadev Temple"><span class="tag">Heritage · Kataka</span><div class="caption"><h3>Shri Dhabaleswara Mahadev</h3><p>A sacred landmark captured in a cinematic frame.</p></div></article>
-   <div class="feature-side">
-    <article><img src="assets/bindu-sagar.jpg" alt="Bindu Sagar, Bhubaneswar"><span class="tag">Bhubaneswar</span><div class="caption"><h3>Bindu Sagar</h3><p>Where faith meets serenity.</p></div></article>
-    <article><img src="assets/world-photography.jpg" alt="World Photography Day"><span class="tag">Photography</span><div class="caption"><h3>The art of seeing</h3><p>Moments that speak beyond words.</p></div></article>
-   </div>
-  </div>
- </div>
-</section>
-
-<section class="section" id="gallery">
- <div class="container">
-  <div class="section-head"><div><div class="eyebrow2">Selected frames</div><h2>Through our lens.</h2></div><p>A growing collection of places, people and moments from Odisha.</p></div>
-  <div class="gallery">
-   <article class="gallery-card"><img src="assets/dhabaleswara.jpg" alt="Dhabaleswara"><div class="gallery-info"><small>01 · Heritage</small><h3>Dhabaleswara</h3></div></article>
-   <article class="gallery-card"><img src="assets/bindu-sagar.jpg" alt="Bindu Sagar"><div class="gallery-info"><small>02 · Serenity</small><h3>Bindu Sagar</h3></div></article>
-   <article class="gallery-card"><img src="assets/world-photography.jpg" alt="Photography"><div class="gallery-info"><small>03 · Moments</small><h3>Beyond words</h3></div></article>
-  </div>
- </div>
-</section>
-
-<section class="manifesto"><div class="eyebrow2">Pixels Odisha</div><h2>“Every place has a story. We just frame the moment.”</h2><p>TRAVEL · EXPLORE · STORYTELLING · CULTURE</p></section>
-
-<section class="section"><div class="container"><div class="insta"><div><div class="eyebrow2">Follow the journey</div><h2>@pixels_odisha</h2><p>More reels, locations and stories from Odisha.</p></div><a href="https://www.instagram.com/pixels_odisha" target="_blank">View Instagram ↗</a></div></div></section>
-
-<footer><div class="container footer-row"><span>© 2026 Pixels Odisha</span><span>Photography · Videography · Culture · Odisha</span></div></footer>
+    <div id="sidebar">
+        <h2>Add Manpower</h2>
+        <div class="control-group">
+            <input type="text" id="workerName" placeholder="Worker Name (e.g. Ramesh)">
+            <select id="zoneSelect"></select>
+            <button onclick="addWorker()">Assign Worker</button>
+        </div>
+        <h2>Active Workforce</h2>
+        <div id="workerList"></div>
+        <br>
+        <button style="background: #dc3545;" onclick="clearData()">Reset Database</button>
+    </div>
+    <div id="map"></div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Adjusted zones based on a generic diagram size to ensure they remain somewhat visible
+        const zones = [
+            { id: 'z1', name: 'Truck Unloading Station', x: 300.0, y: 600.0 },
+            { id: 'z2', name: 'Coal Washery', x: 600.0, y: 400.0 },
+            { id: 'z3', name: 'Furnace 1', x: 900.0, y: 240.0 },
+            { id: 'z4', name: 'Middling Yard', x: 960.0, y: 640.0 }
+        ];
+        
+        let workers = JSON.parse(localStorage.getItem('plant_workers')) || [];
+        function saveToDatabase() { localStorage.setItem('plant_workers', JSON.stringify(workers)); renderDashboard(); }
+        
+        const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
+        const imgWidth = 1200; const imgHeight = 800; const bounds = [[0, 0], [imgHeight, imgWidth]];
+        
+        // POINTING TO THE LOCAL IMAGE IN THE ZIP
+        const placeholderImg = 'diagram.jpg';
+        L.imageOverlay(placeholderImg, bounds).addTo(map);
+        map.fitBounds(bounds);
+        
+        let zoneMarkers = {};
+        
+        function renderDashboard() { renderSidebar(); renderMapMarkers(); }
+        
+        function renderMapMarkers() {
+            Object.values(zoneMarkers).forEach(marker => map.removeLayer(marker));
+            zoneMarkers = {};
+            
+            const headcounts = {};
+            zones.forEach(z => headcounts[z.id] = 0);
+            workers.forEach(w => { if(headcounts[w.zoneId] !== undefined) headcounts[w.zoneId]++; });
+            
+            zones.forEach(zone => {
+                const count = headcounts[zone.id];
+                const statusClass = count > 0 ? 'optimal' : '';
+                const badgeIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div class="manpower-badge ${statusClass}">${count} Workers<br><small>${zone.name}</small></div>`,
+                    iconSize: [120, 40],
+                    iconAnchor: [60, 20]
+                });
+                const marker = L.marker([zone.y, zone.x], { icon: badgeIcon }).addTo(map);
+                zoneMarkers[zone.id] = marker;
+            });
+        }
+        
+        function renderSidebar() {
+            const listDiv = document.getElementById('workerList');
+            listDiv.innerHTML = '';
+            if(workers.length === 0) listDiv.innerHTML = '<p style="color:#666; font-size:14px;">No workers assigned.</p>';
+            
+            workers.forEach((worker, index) => {
+                let optionsHtml = zones.map(z => `<option value="${z.id}" ${worker.zoneId === z.id ? 'selected' : ''}>${z.name}</option>`).join('');
+                const card = document.createElement('div');
+                card.className = 'worker-card';
+                card.innerHTML = `<div class="worker-name">${worker.name}</div><select onchange="updateWorkerZone(${index}, this.value)">${optionsHtml}</select>`;
+                listDiv.appendChild(card);
+            });
+        }
+        
+        function addWorker() {
+            const nameInput = document.getElementById('workerName');
+            const zoneSelect = document.getElementById('zoneSelect');
+            if (nameInput.value.trim() === '') return alert('Enter a worker name');
+            workers.push({ id: Date.now(), name: nameInput.value.trim(), zoneId: zoneSelect.value });
+            nameInput.value = '';
+            saveToDatabase();
+        }
+        
+        function updateWorkerZone(workerIndex, newZoneId) { workers[workerIndex].zoneId = newZoneId; saveToDatabase(); }
+        function clearData() { if(confirm('Delete all worker data?')) { workers = []; saveToDatabase(); } }
+        
+        const addZoneSelect = document.getElementById('zoneSelect');
+        zones.forEach(z => {
+            let opt = document.createElement('option');
+            opt.value = z.id;
+            opt.innerHTML = z.name;
+            addZoneSelect.appendChild(opt);
+        });
+        
+        renderDashboard();
+    </script>
 </body>
 </html>
