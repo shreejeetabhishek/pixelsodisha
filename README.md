@@ -1,19 +1,21 @@
-# Steel Plant Tracker - Professional UI & Logic Update
+# Steel Plant Tracker - Advanced Animation & Settings Update
 
-This update introduces the advanced visual and functional requirements for the tracker.
+This version introduces the heavy customization, live machine status animations, and detailed worker logic requested.
 
-## Key Improvements in this Version:
-1. **Perfect Centering Engine**: Badges no longer drift. They use `transform: translate(-50%, -50%)` applied to a `0x0` Leaflet container, ensuring they stay perfectly glued to the exact center of your vectorized zones, regardless of text length or zoom level.
-2. **Professional Glass UI**: Badges now feature a semi-transparent background with a frosted glass `backdrop-filter` effect, so the engineering diagram underneath remains partially visible.
-3. **Dynamic Zoom Details**: When you zoom in (`map.getZoom() >= 1`), the badges automatically expand slightly and reveal extra data (Zone ID and Status) directly on the map.
-4. **Connection Lines (Orthogonal Routes)**: 
-   - A new **Polyline tool** (the zig-zag line icon) has been enabled in the drawing toolbar.
-   - Click to start, click at the corners to bend at 90 degrees, and double-click to finish drawing a connection line between machines.
-   - It renders as a professional dashed orange blueprint line (`#ff8c00`).
-   - You can name the line and even assign workers to it (the badge will appear exactly in the middle of the line).
+## High-End Features Added:
+1. **Machine Status Settings Panel**: 
+   - A new control block allows you to select any vectorized zone you drew and change its live status to **Running**, **Maintenance**, or **Offline**.
+2. **Live Map Animations**: 
+   - **Blinking LEDs**: Every badge now has an LED status light. It blinks fast green (Running), pulses slowly yellow (Maintenance), or stays solid red (Offline).
+   - **Flowing Connections**: If you draw a polyline (connection route) and set it to running, the dashed lines will actually animate across the screen to simulate material flow!
+   - **Pulsing Zones**: Active machines/polygons will subtly pulse their background color on the map.
+3. **Advanced Worker Customization**:
+   - You can now assign specific roles (Operator, Technician, Supervisor, Safety).
+   - The UI cleanly lists workers inside the map badge, showing their specific designation right next to their name.
+4. **Dark Mode Blueprint UI**:
+   - The sidebar has been styled in a dark "Command Center" theme to make the neon greens, yellows, and reds of the machine animations stand out sharply against the schematic.
 
 ## Instructions:
-1. Extract this ZIP.
-2. Replace your previous `index.html` with this new one.
-3. Make sure `F_D1.jpg` is in the same folder.
-4. Open `index.html` in your browser. (Note: Because this version uses a slightly different local storage key to prevent conflicts with old uncentered data, your map will start fresh).
+1. Extract the ZIP.
+2. Ensure your `F_D1.jpg` is in the same folder.
+3. Overwrite your previous `index.html` with this new one and push to GitHub Pages.

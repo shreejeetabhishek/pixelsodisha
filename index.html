@@ -3,83 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plant Flow Tracker - Professional UI</title>
+    <title>Plant Flow Tracker - Advanced Operations</title>
     
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
-    <!-- Leaflet Draw CSS & JS -->
+    <!-- Leaflet Draw -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
     <style>
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; overflow: hidden; background: #1e1e1e; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; overflow: hidden; background: #121212; color: #e0e0e0; }
         
-        /* Layouts */
-        #sidebar { width: 340px; background: #ffffff; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; box-sizing: border-box; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
+        /* Dark Mode Sidebar */
+        #sidebar { width: 360px; background: #1e1e2f; border-right: 1px solid #2a2a40; padding: 20px; overflow-y: auto; box-sizing: border-box; z-index: 10; box-shadow: 4px 0 15px rgba(0,0,0,0.5); }
         #map-container { flex-grow: 1; position: relative; height: 100vh; display: flex; flex-direction: column; }
-        #map { flex-grow: 1; background-color: #f4f6f8; width: 100%; height: 100%; }
+        #map { flex-grow: 1; background-color: #0a0a10; width: 100%; height: 100%; }
         
         /* Typography & Controls */
-        h2 { font-size: 16px; margin-top: 0; color: #333; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #0056b3; padding-bottom: 8px; }
-        .control-group { margin-bottom: 25px; }
-        input, select, button.action-btn { width: 100%; padding: 10px; margin-top: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-        input:focus, select:focus { outline: none; border-color: #0056b3; box-shadow: 0 0 0 2px rgba(0,86,179,0.1); }
+        h2 { font-size: 15px; margin-top: 0; color: #4da8da; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #2a2a40; padding-bottom: 8px; margin-bottom: 15px; }
+        .control-panel { background: #252538; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #33334d; }
         
-        button.action-btn { background: #0056b3; color: white; border: none; cursor: pointer; font-weight: 600; transition: all 0.2s; }
-        button.action-btn:hover { background: #004494; transform: translateY(-1px); }
-        button.danger-btn { background: #dc3545; margin-top: 15px; }
+        label { font-size: 12px; color: #a0a0b5; font-weight: 600; text-transform: uppercase; margin-top: 8px; display: block; }
+        input, select, button.action-btn { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #33334d; border-radius: 6px; box-sizing: border-box; font-size: 14px; background: #1e1e2f; color: #fff; }
+        input:focus, select:focus { outline: none; border-color: #4da8da; box-shadow: 0 0 0 2px rgba(77,168,218,0.2); }
+        
+        button.action-btn { background: #4da8da; color: #000; border: none; cursor: pointer; font-weight: 700; transition: all 0.2s; margin-top: 15px; }
+        button.action-btn:hover { background: #3b8bb8; transform: translateY(-1px); }
+        button.danger-btn { background: #dc3545; color: white; }
         button.danger-btn:hover { background: #c82333; }
         
-        .worker-card { background: #f8f9fa; padding: 12px; margin-bottom: 10px; border: 1px solid #e9ecef; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .worker-name { font-weight: 600; font-size: 14px; color: #212529; }
+        /* Worker List styling */
+        .worker-card { background: #2a2a40; padding: 12px; margin-bottom: 10px; border-left: 4px solid #4da8da; border-radius: 4px; }
+        .worker-name { font-weight: 600; font-size: 14px; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+        .role-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #33334d; color: #a0a0b5; text-transform: uppercase; }
         
         /* 
          * PROFESSIONAL MAP BADGES 
-         * Using translate(-50%, -50%) for perfect mathematical centering regardless of content size
          */
         .transparent-icon { overflow: visible !important; }
         
         .manpower-badge { 
-            position: absolute;
-            transform: translate(-50%, -50%);
-            background: rgba(220, 53, 69, 0.85); /* Semi-transparent Red */
-            backdrop-filter: blur(4px); /* Professional glass effect */
-            -webkit-backdrop-filter: blur(4px);
-            color: white; 
-            padding: 6px 12px; 
-            border-radius: 8px; 
-            text-align: center; 
-            border: 1px solid rgba(255,255,255,0.4); 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
-            white-space: nowrap; 
-            transition: all 0.3s ease;
-            pointer-events: none; /* Let clicks pass through to the polygon */
+            position: absolute; transform: translate(-50%, -50%);
+            background: rgba(20, 20, 35, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            color: white; padding: 12px 18px; border-radius: 8px; text-align: center; 
+            border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.5); 
+            white-space: nowrap; pointer-events: none; min-width: 130px;
         }
         
-        .manpower-badge.optimal { 
-            background: rgba(40, 167, 69, 0.85); /* Semi-transparent Green */
-            border-color: rgba(255,255,255,0.5);
-        }
+        .badge-header { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        .badge-zone { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-count { font-size: 12px; font-weight: 600; color: #a0a0b5; }
+        
+        .badge-workers { font-size: 12px; font-weight: 500; margin-top: 8px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; white-space: normal; max-width: 200px; text-align: left; line-height: 1.5; display: inline-block; }
+        .worker-item { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px; margin-bottom: 2px; }
+        .worker-item:last-child { border: none; margin: 0; padding: 0; }
+        
+        /* 
+         * ADVANCED ANIMATIONS & MACHINE STATUS
+         */
+        /* The LED Light */
+        .led { width: 12px; height: 12px; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px currentColor; }
+        .led-running { background: #00ff00; color: #00ff00; animation: blink-fast 0.5s infinite; }
+        .led-maintenance { background: #ffaa00; color: #ffaa00; animation: blink-slow 2s infinite; }
+        .led-offline { background: #ff0000; color: #ff0000; }
+        
+        @keyframes blink-fast { 0% {opacity: 1; box-shadow: 0 0 12px currentColor;} 50% {opacity: 0.3; box-shadow: 0 0 2px currentColor;} 100% {opacity: 1; box-shadow: 0 0 12px currentColor;} }
+        @keyframes blink-slow { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
 
-        .badge-count { font-weight: 800; font-size: 13px; letter-spacing: 0.5px; }
-        .badge-zone { font-size: 11px; font-weight: 500; opacity: 0.9; margin-top: 2px; }
-        
-        /* Dynamic Zoom Details (Hidden by default, shown when map is zoomed in) */
-        .zoom-reveal { display: none; font-size: 10px; opacity: 0.8; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 4px; }
-        .map-zoomed-in .zoom-reveal { display: block; }
-        .map-zoomed-in .manpower-badge { padding: 10px 16px; transform: translate(-50%, -50%) scale(1.1); }
+        /* Flowing Lines for Pipes/Conveyors */
+        .flowing-line { animation: dash-flow 1s linear infinite; }
+        @keyframes dash-flow { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+
+        /* Pulsing Polygons for Active Machines */
+        .pulsing-zone { animation: zone-pulse 2s ease-in-out infinite; }
+        @keyframes zone-pulse { 0% { fill-opacity: 0.1; } 50% { fill-opacity: 0.4; } 100% { fill-opacity: 0.1; } }
 
         /* Full Screen Button */
-        .fullscreen-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: #ffffff; color: #333; border: 1px solid #ccc; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,0.1); transition: all 0.2s; }
-        .fullscreen-btn:hover { background: #f8f9fa; color: #0056b3; }
+        .fullscreen-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: #1e1e2f; color: #4da8da; border: 1px solid #4da8da; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 700; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .fullscreen-btn:hover { background: #4da8da; color: #000; }
 
-        /* Mobile Layout */
         @media (max-width: 768px) {
             body:not(.fullscreen-mode) { flex-direction: column; }
             body:not(.fullscreen-mode) #map-container { height: 55vh; flex-grow: 0; }
-            body:not(.fullscreen-mode) #sidebar { height: 45vh; width: 100%; border-right: none; border-top: 2px solid #ddd; }
+            body:not(.fullscreen-mode) #sidebar { height: 45vh; width: 100%; border-right: none; border-top: 2px solid #33334d; }
         }
         body.fullscreen-mode #sidebar { display: none !important; }
         body.fullscreen-mode #map-container { height: 100vh; width: 100vw; }
@@ -87,24 +95,48 @@
 </head>
 <body>
     <div id="sidebar">
-        <h2>Add Manpower</h2>
-        <div class="control-group">
-            <input type="text" id="workerName" placeholder="Worker Name (e.g. Ramesh)">
-            <select id="zoneSelect"></select>
+        
+        <h2>1. Machine / Site Settings</h2>
+        <div class="control-panel">
+            <label>Select Drawn Zone</label>
+            <select id="settingZoneSelect" onchange="loadZoneSettings()"></select>
+            
+            <label>Operating Status</label>
+            <select id="zoneStatusSelect">
+                <option value="running">🟢 Running (Animated)</option>
+                <option value="maintenance">🟡 Maintenance (Standby)</option>
+                <option value="offline">🔴 Offline (Stopped)</option>
+            </select>
+            <button class="action-btn" onclick="updateZoneStatus()" style="background:#28a745; color:white;">Update Machine Status</button>
+        </div>
+
+        <h2>2. Assign Manpower</h2>
+        <div class="control-panel">
+            <label>Worker Name</label>
+            <input type="text" id="workerName" placeholder="e.g. Ramesh Kumar">
+            
+            <label>Designation / Role</label>
+            <select id="workerRole">
+                <option value="Operator">⚙️ Operator</option>
+                <option value="Technician">🔧 Technician</option>
+                <option value="Supervisor">📋 Supervisor</option>
+                <option value="Safety">🛡️ Safety Officer</option>
+            </select>
+            
+            <label>Assign To Location</label>
+            <select id="assignZoneSelect"></select>
+            
             <button class="action-btn" onclick="addWorker()">Assign Worker</button>
         </div>
         
-        <h2>Active Workforce</h2>
+        <h2>3. Active Workforce</h2>
         <div id="workerList"></div>
         
-        <button class="action-btn danger-btn" onclick="clearData()">Reset Database</button>
-        <p style="font-size: 12px; color: #666; margin-top: 15px; line-height: 1.5;">
-            <strong>Pro Tip:</strong> Use the polygon tool to draw zones. Use the Polyline tool (line icon) to draw 90-degree connection routes between machines.
-        </p>
+        <button class="action-btn danger-btn" onclick="clearData()" style="margin-top:40px;">⚠️ Factory Reset Database</button>
     </div>
 
     <div id="map-container">
-        <button class="fullscreen-btn" onclick="toggleFullscreen()">&#x26F6; Full Page View</button>
+        <button class="fullscreen-btn" onclick="toggleFullscreen()">&#x26F6; Full Screen</button>
         <div id="map"></div>
     </div>
     
@@ -114,54 +146,39 @@
             setTimeout(() => { map.invalidateSize(); }, 300);
         }
 
-        // --- DATABASE SETUP ---
-        let zones = JSON.parse(localStorage.getItem('plant_zones_v2')) || [];
-        let workers = JSON.parse(localStorage.getItem('plant_workers_v2')) || [];
+        // --- DATABASE SETUP (v3 for new structure) ---
+        let zones = JSON.parse(localStorage.getItem('plant_zones_v3')) || [];
+        let workers = JSON.parse(localStorage.getItem('plant_workers_v3')) || [];
         
         function saveToDatabase() { 
-            localStorage.setItem('plant_zones_v2', JSON.stringify(zones));
-            localStorage.setItem('plant_workers_v2', JSON.stringify(workers)); 
+            localStorage.setItem('plant_zones_v3', JSON.stringify(zones));
+            localStorage.setItem('plant_workers_v3', JSON.stringify(workers)); 
             renderDashboard(); 
         }
 
         // --- MAP INITIALIZATION ---
+        // Using a dark background to make LEDs pop
         const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 4 });
-        const imgWidth = 2000; 
-        const imgHeight = 1500; 
+        const imgWidth = 2000; const imgHeight = 1500; 
         const bounds = [[0, 0], [imgHeight, imgWidth]];
         
+        // Add a slight CSS invert filter to the image to make it dark mode if desired, 
+        // but leaving standard for now so it matches their diagram.
         L.imageOverlay('F_D1.jpg', bounds).addTo(map);
         map.fitBounds(bounds);
 
-        // --- ZOOM LISTENER (For dynamic detail revealing) ---
-        map.on('zoomend', function() {
-            if (map.getZoom() >= 1) {
-                document.getElementById('map').classList.add('map-zoomed-in');
-            } else {
-                document.getElementById('map').classList.remove('map-zoomed-in');
-            }
-        });
-
-        // --- DRAWING TOOLS (Polygons, Pins, & Connection Lines) ---
+        // --- DRAWING TOOLS ---
         var drawnItems = new L.FeatureGroup();
         map.addLayer(drawnItems);
         
         var drawControl = new L.Control.Draw({
             draw: {
-                circle: false,
-                circlemarker: false,
-                marker: true,
-                polygon: { shapeOptions: { color: '#0056b3', weight: 2, fillOpacity: 0.1 } },
-                rectangle: { shapeOptions: { color: '#0056b3', weight: 2, fillOpacity: 0.1 } },
-                // Enable Polyline for Connection Routes
+                circle: false, circlemarker: false, marker: true,
+                polygon: { shapeOptions: { color: '#4da8da', weight: 2, fillOpacity: 0.2 } },
+                rectangle: { shapeOptions: { color: '#4da8da', weight: 2, fillOpacity: 0.2 } },
                 polyline: { 
-                    shapeOptions: { 
-                        color: '#ff8c00', // Professional Orange
-                        weight: 3, 
-                        dashArray: '5, 8', // Dashed blueprint style
-                        opacity: 0.8
-                    },
-                    icon: new L.DivIcon({ iconSize: new L.Point(8, 8), className: 'leaflet-div-icon leaflet-editing-icon' })
+                    shapeOptions: { color: '#00ff00', weight: 4, dashArray: '10, 14', opacity: 0.9 },
+                    icon: new L.DivIcon({ iconSize: new L.Point(8, 8), className: 'leaflet-div-icon' })
                 }
             },
             edit: { featureGroup: drawnItems }
@@ -170,18 +187,13 @@
 
         map.on(L.Draw.Event.CREATED, function (e) {
             var type = e.layerType, layer = e.layer;
-            
-            var promptText = type === 'polyline' ? "Name this connection route:" : "Enter a name for this Zone/Location:";
-            var zoneName = prompt(promptText);
+            var zoneName = prompt("Enter a name for this Location/Route:");
             if (!zoneName) return; 
 
-            let newZone = { id: 'z_' + Date.now(), name: zoneName, type: type };
-
-            if (type === 'marker') {
-                newZone.latlng = layer.getLatLng();
-            } else {
-                newZone.latlngs = layer.getLatLngs();
-            }
+            // Default new zones to 'running'
+            let newZone = { id: 'z_' + Date.now(), name: zoneName, type: type, status: 'running' };
+            if (type === 'marker') { newZone.latlng = layer.getLatLng(); } 
+            else { newZone.latlngs = layer.getLatLngs(); }
             
             zones.push(newZone);
             saveToDatabase();
@@ -197,11 +209,28 @@
             saveToDatabase();
         });
 
+        // --- STATUS & SETTINGS LOGIC ---
+        function loadZoneSettings() {
+            const zId = document.getElementById('settingZoneSelect').value;
+            const z = zones.find(x => x.id === zId);
+            if(z) { document.getElementById('zoneStatusSelect').value = z.status || 'running'; }
+        }
+
+        function updateZoneStatus() {
+            const zId = document.getElementById('settingZoneSelect').value;
+            const newStatus = document.getElementById('zoneStatusSelect').value;
+            if(!zId) return alert('Select a zone first.');
+            
+            const z = zones.find(x => x.id === zId);
+            if(z) { z.status = newStatus; saveToDatabase(); }
+        }
+
         // --- RENDER LOGIC ---
         let badgeMarkers = {}; 
 
         function renderDashboard() { 
-            renderSidebar(); 
+            updateDropdowns();
+            renderWorkerList(); 
             renderMapMarkers(); 
         }
         
@@ -210,24 +239,33 @@
             Object.values(badgeMarkers).forEach(m => map.removeLayer(m));
             badgeMarkers = {};
             
-            const headcounts = {};
-            zones.forEach(z => headcounts[z.id] = 0);
-            workers.forEach(w => { if(w.zoneId && headcounts[w.zoneId] !== undefined) headcounts[w.zoneId]++; });
+            // Gather workers
+            const zoneWorkers = {};
+            zones.forEach(z => zoneWorkers[z.id] = []);
+            workers.forEach(w => { if(w.zoneId && zoneWorkers[w.zoneId]) zoneWorkers[w.zoneId].push(w); });
             
             zones.forEach(zone => {
                 let centerPoint;
                 let shapeLayer;
+                
+                // Determine styling based on status
+                const stat = zone.status || 'running';
+                let baseColor = stat === 'running' ? '#00ff00' : (stat === 'maintenance' ? '#ffaa00' : '#ff0000');
+                let cssClass = '';
+                
+                if (stat === 'running') {
+                    if (zone.type === 'polyline') cssClass = 'flowing-line';
+                    else if (zone.type === 'polygon' || zone.type === 'rectangle') cssClass = 'pulsing-zone';
+                }
 
                 if (zone.type === 'marker') {
                     centerPoint = [zone.latlng.lat, zone.latlng.lng];
-                    shapeLayer = L.circleMarker(centerPoint, { radius: 6, color: '#0056b3', fillOpacity: 0.8 });
+                    shapeLayer = L.circleMarker(centerPoint, { radius: 8, color: baseColor, fillOpacity: 0.8, className: cssClass });
                 } else if (zone.type === 'polyline') {
-                    // Draw the connection line
-                    shapeLayer = L.polyline(zone.latlngs, {color: '#ff8c00', weight: 3, dashArray: '5, 8', opacity: 0.8});
-                    // For polylines, put the badge in the middle of the line
+                    shapeLayer = L.polyline(zone.latlngs, {color: baseColor, weight: 4, dashArray: '10, 14', opacity: 0.9, className: cssClass});
                     centerPoint = shapeLayer.getBounds().getCenter(); 
                 } else if (zone.type === 'polygon' || zone.type === 'rectangle') {
-                    shapeLayer = L.polygon(zone.latlngs, {color: '#0056b3', weight: 2, fillOpacity: 0.1});
+                    shapeLayer = L.polygon(zone.latlngs, {color: baseColor, weight: 2, fillOpacity: 0.15, className: cssClass});
                     centerPoint = shapeLayer.getBounds().getCenter();
                 }
 
@@ -236,21 +274,28 @@
                     drawnItems.addLayer(shapeLayer);
                 }
                 
-                // Only draw a badge if it's a zone/marker OR if a polyline has workers assigned
-                const count = headcounts[zone.id];
+                const assignedWorkers = zoneWorkers[zone.id];
+                const count = assignedWorkers.length;
+                
+                // Always draw a badge for zones (to show LED status), optionally for lines if they have workers
                 if (zone.type !== 'polyline' || count > 0) {
-                    const statusClass = count > 0 ? 'optimal' : '';
                     
-                    // The CSS handles perfect centering via translate(-50%, -50%)
+                    let workersHtml = '';
+                    if (count > 0) {
+                        const items = assignedWorkers.map(w => `<div class="worker-item"><span>${w.name}</span> <span style="color:#4da8da; font-size:10px;">${w.role}</span></div>`).join('');
+                        workersHtml = `<div class="badge-workers">${items}</div>`;
+                    }
+                    
                     const badgeIcon = L.divIcon({
-                        className: 'transparent-icon', 
-                        iconSize: [0, 0], 
-                        iconAnchor: [0, 0], 
+                        className: 'transparent-icon', iconSize: [0, 0], iconAnchor: [0, 0], 
                         html: `
-                            <div class="manpower-badge ${statusClass}">
-                                <div class="badge-count">${count} Workers</div>
-                                <div class="badge-zone">${zone.name}</div>
-                                <div class="zoom-reveal">Zone ID: ${zone.id.substring(2, 6)}<br>Status: ${count > 0 ? 'Active' : 'Standby'}</div>
+                            <div class="manpower-badge">
+                                <div class="badge-header">
+                                    <div class="led led-${stat}"></div>
+                                    <div class="badge-zone">${zone.name}</div>
+                                </div>
+                                <div class="badge-count">${count} Personnel Active</div>
+                                ${workersHtml}
                             </div>`
                     });
                     
@@ -261,31 +306,41 @@
             });
         }
         
-        function renderSidebar() {
-            const addZoneSelect = document.getElementById('zoneSelect');
-            addZoneSelect.innerHTML = '<option value="">-- Select Zone/Location --</option>';
+        function updateDropdowns() {
+            const setSelect = document.getElementById('settingZoneSelect');
+            const assignSelect = document.getElementById('assignZoneSelect');
+            
+            setSelect.innerHTML = '<option value="">-- Select Machine/Zone --</option>';
+            assignSelect.innerHTML = '<option value="">-- Select Location --</option>';
+            
             zones.forEach(z => {
-                let opt = document.createElement('option');
-                opt.value = z.id;
-                // Add a small indicator if it's a connection route vs a zone
-                opt.innerHTML = (z.type === 'polyline' ? '🔗 ' : '📍 ') + z.name;
-                addZoneSelect.appendChild(opt);
+                let icon = z.type === 'polyline' ? '🔗 ' : '📍 ';
+                let opt1 = document.createElement('option'); opt1.value = z.id; opt1.innerHTML = icon + z.name;
+                let opt2 = document.createElement('option'); opt2.value = z.id; opt2.innerHTML = icon + z.name;
+                
+                setSelect.appendChild(opt1);
+                assignSelect.appendChild(opt2);
             });
+        }
 
+        function renderWorkerList() {
             const listDiv = document.getElementById('workerList');
             listDiv.innerHTML = '';
             
             if(workers.length === 0) {
-                listDiv.innerHTML = '<p style="color:#888; font-size:13px; font-style:italic;">No workers assigned.</p>';
+                listDiv.innerHTML = '<p style="color:#666; font-size:13px; font-style:italic;">No workers active.</p>';
             }
             
             workers.forEach((worker, index) => {
-                let optionsHtml = '<option value="">-- Unassigned --</option>';
+                let optionsHtml = '<option value="">-- Reassign --</option>';
                 optionsHtml += zones.map(z => `<option value="${z.id}" ${worker.zoneId === z.id ? 'selected' : ''}>${z.name}</option>`).join('');
                 
                 const card = document.createElement('div');
                 card.className = 'worker-card';
-                card.innerHTML = `<div class="worker-name">${worker.name}</div><select onchange="updateWorkerZone(${index}, this.value)">${optionsHtml}</select>`;
+                card.innerHTML = `
+                    <div class="worker-name">${worker.name} <span class="role-tag">${worker.role}</span></div>
+                    <select onchange="updateWorkerZone(${index}, this.value)">${optionsHtml}</select>
+                `;
                 listDiv.appendChild(card);
             });
         }
@@ -293,25 +348,22 @@
         // --- ACTIONS ---
         function addWorker() {
             const nameInput = document.getElementById('workerName');
-            const zoneSelect = document.getElementById('zoneSelect');
-            if (nameInput.value.trim() === '') return alert('Enter a worker name');
-            if (zoneSelect.value === '') return alert('Please select a zone or connection route.');
+            const roleSelect = document.getElementById('workerRole');
+            const zoneSelect = document.getElementById('assignZoneSelect');
             
-            workers.push({ id: Date.now(), name: nameInput.value.trim(), zoneId: zoneSelect.value });
+            if (nameInput.value.trim() === '') return alert('Enter a worker name');
+            if (zoneSelect.value === '') return alert('Please select a location.');
+            
+            workers.push({ id: Date.now(), name: nameInput.value.trim(), role: roleSelect.value, zoneId: zoneSelect.value });
             nameInput.value = '';
             saveToDatabase();
         }
         
-        function updateWorkerZone(workerIndex, newZoneId) { 
-            workers[workerIndex].zoneId = newZoneId; 
-            saveToDatabase(); 
-        }
+        function updateWorkerZone(workerIndex, newZoneId) { workers[workerIndex].zoneId = newZoneId; saveToDatabase(); }
         
         function clearData() { 
-            if(confirm('Delete all worker and zone data? This will reset the map.')) { 
-                workers = []; 
-                zones = [];
-                saveToDatabase(); 
+            if(confirm('WARNING: Delete all machines, settings, and worker data?')) { 
+                workers = []; zones = []; saveToDatabase(); 
             } 
         }
         
