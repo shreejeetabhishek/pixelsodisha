@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10201c">
+<title>Satellite View · Plant Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+:root{color-scheme:dark;--bg:#0c1714;--panel:#14251f;--line:#2b4038;--text:#eef5f1;--muted:#a7b8b0;--green:#1d7057}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+header{min-height:68px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);background:#10201c}
+.brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:.12em}.brand img{width:36px;height:36px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.24em}
+.actions{display:flex;gap:8px;flex-wrap:wrap}button,a{border:1px solid #385349;background:#1a3028;color:var(--text);border-radius:10px;padding:9px 13px;font:600 13px inherit;text-decoration:none;cursor:pointer}
+button:hover,a:hover{background:#25483b}main{padding:16px;max-width:1600px;margin:auto}.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px}.top h1{margin:0;font-size:clamp(20px,3vw,28px)}.top p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px}.map-wrap{height:calc(100dvh - 150px);min-height:440px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#25342e;position:relative}#map{height:100%;width:100%;background:#26352e}.side{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;align-self:start}.side h2{margin:0 0 4px;font-size:17px}.muted{color:var(--muted);font-size:13px}.coord{padding:12px;background:#0e1c17;border:1px solid var(--line);border-radius:10px;margin:14px 0}.coord b{display:block;font-variant-numeric:tabular-nums;margin-top:3px}.tag{display:inline-block;border-radius:20px;padding:4px 8px;background:#24483b;color:#a9e3c9;font-size:11px;font-weight:700}.note{font-size:12px;color:var(--muted);line-height:1.5}.leaflet-container{font:inherit}.leaflet-control-attribution{font-size:10px!important}.yard-pin{width:20px;height:20px;background:#e3a63f;border:3px solid white;border-radius:50%;box-shadow:0 1px 8px #0009}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#14251f;color:#eef5f1}.leaflet-popup-content{margin:10px 13px}.leaflet-popup-content b{display:block;margin-bottom:3px}
+@media(max-width:800px){header{padding:10px 12px}.brand{font-size:12px}.actions{gap:5px}.actions button,.actions a{padding:8px 9px;font-size:12px}main{padding:10px}.layout{grid-template-columns:1fr}.map-wrap{height:62dvh;min-height:380px}.side{padding:13px}.top{display:block}.top .actions{margin-top:10px}}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" crossorigin="anonymous">
+</head>
+<body>
+<header>
+ <div class="brand"><img src="assets/plant-mark.svg" alt=""><span>PLANT<small>TRACKER · SPATIAL OPERATIONS</small></span></div>
+ <nav class="actions"><a href="index.html">Back to plant map</a><a href="engineering-drawing.html">Engineering drawing</a></nav>
+</header>
+<main>
+ <div class="top"><div><h1>Satellite view</h1><p>Live satellite imagery centred on the supplied Yard 1 coordinate.</p></div><div class="actions"><button id="editMode">Enable map editing</button><button id="satellite">Satellite</button><button id="streets">Street map</button><button id="locate">Yard 1</button></div></div>
+ <div class="layout">
+  <div class="map-wrap"><div id="map" aria-label="Interactive satellite map"></div></div>
+  <aside class="side">
+   <span class="tag">REFERENCE LOCATION</span>
+   <h2 style="margin-top:12px">Yard 1</h2>
+   <p class="muted">Initial map centre supplied for the Angul plant.</p>
+   <div class="coord"><span class="muted">Yard 1 · Reference coordinate</span><b>20.8954690, 84.9788749</b></div>
+   <div id="editPanel" hidden style="margin:12px 0">
+    <p class="tag">MAP EDIT MODE</p>
+    <p class="note">Draw plant boundaries, operational zones and point markers using the map tools. Click a feature to rename or inspect it. Changes are saved in this browser.</p>
+    <div class="actions" style="margin:10px 0"><button id="saveMap">Save map</button><button id="exportMap">Export GeoJSON</button><button id="importMap">Import GeoJSON</button><input id="importFile" type="file" accept=".json,.geojson,application/geo+json" hidden></div>
+    <button id="clearMap" style="border-color:#874e43">Delete all drawn features</button>
+    <p id="saveStatus" class="note" aria-live="polite">No unsaved changes.</p>
+   </div>
+   <div><h2>Mapped features</h2><div id="featureList" class="note">No custom zones yet.</div></div>
+   <p class="note">Use the map to pan and zoom. Satellite imagery is streamed from the map provider and requires an internet connection. The marker identifies the supplied point, not a verified plant boundary.</p>
+   <p class="note">Map attribution is displayed on the map. Imagery coverage, resolution and update date depend on the provider.</p>
+  </aside>
+ </div>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js" crossorigin="anonymous"></script>
+<script>
+(()=>{
+ "use strict";
+ const yard=[20.8954690,84.9788749], STORAGE_KEY="plant_tracker_map_features_v1";
+ const map=L.map('map',{zoomControl:true}).setView(yard,18);
+ const imagery=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'});
+ const streets=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'});
+ imagery.addTo(map);
+ const drawn=new L.FeatureGroup().addTo(map);
+ let drawControl=null,editing=false,dirty=false;
+ const status=document.getElementById('saveStatus'),panel=document.getElementById('editPanel');
+ const markerIcon=L.divIcon({className:'',html:'<div class="yard-pin"></div>',iconSize:[20,20],iconAnchor:[10,10]});
+ L.marker(yard,{icon:markerIcon}).addTo(map).bindPopup('<b>Yard 1 reference</b>20.8954690, 84.9788749');
+ function setDirty(){dirty=true;status.textContent='Unsaved map changes';}
+ function featureName(layer){return layer.feature?.properties?.name||'Unnamed feature';}
+ function featureType(layer){return layer.feature?.properties?.kind||'Zone';}
+ function attachFeature(layer,props){
+   layer.feature=layer.feature||{type:'Feature',properties:{},geometry:null};
+   layer.feature.properties={...(layer.feature.properties||{}),...props};
+   if(layer.setStyle) layer.setStyle({color:props.color||'#35c58b',fillColor:props.color||'#35c58b',weight:3,fillOpacity:.18});
+   layer.bindPopup('<b>'+escapeHtml(featureName(layer))+'</b><br>'+escapeHtml(featureType(layer)));
+   layer.on('click',()=>{if(!editing){layer.openPopup();return;}const n=prompt('Feature name',featureName(layer));if(n===null)return;if(!n.trim())return;layer.feature.properties.name=n.trim();const k=prompt('Feature type (Plant boundary / Operational zone / Equipment area)',featureType(layer));if(k!==null&&k.trim())layer.feature.properties.kind=k.trim();attachFeature(layer,layer.feature.properties);setDirty();renderList();});
+ }
+ function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+ function renderList(){
+   const list=document.getElementById('featureList'),layers=[];drawn.eachLayer(l=>layers.push(l));
+   if(!layers.length){list.textContent='No custom zones yet. Enable editing and draw a boundary or zone.';return;}
+   list.innerHTML=layers.map((l,i)=>'<div style="padding:7px 0;border-bottom:1px solid #2b4038"><b>'+(i+1)+'. '+escapeHtml(featureName(l))+'</b><br><span>'+escapeHtml(featureType(l))+'</span></div>').join('');
+ }
+ function loadSaved(){
+   try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return;const geo=JSON.parse(raw);L.geoJSON(geo,{pointToLayer:(f,latlng)=>L.marker(latlng),onEachFeature:(f,l)=>{attachFeature(l,f.properties||{});drawn.addLayer(l);}});renderList();}catch(e){status.textContent='Could not load saved map data: '+e.message;}
+ }
+ function save(){const geo=drawn.toGeoJSON();localStorage.setItem(STORAGE_KEY,JSON.stringify(geo));dirty=false;status.textContent='Saved locally in this browser · '+new Date().toLocaleString();renderList();}
+ function enableEditing(){
+   if(drawControl){map.removeControl(drawControl);drawControl=null;}
+   drawControl=new L.Control.Draw({position:'topleft',draw:{polygon:{allowIntersection:false,showArea:true,shapeOptions:{color:'#35c58b'}},rectangle:{shapeOptions:{color:'#35c58b'}},polyline:{shapeOptions:{color:'#e3a63f'}},marker:{icon:markerIcon},circle:false,circlemarker:false},edit:{featureGroup:drawn,remove:true}});
+   map.addControl(drawControl);
+ }
+ document.getElementById('editMode').onclick=()=>{
+   editing=!editing;panel.hidden=!editing;
+   document.getElementById('editMode').textContent=editing?'Finish editing':'Enable map editing';
+   if(editing){enableEditing();status.textContent='Editing enabled. Use the map drawing toolbar.';}
+   else{if(drawControl){map.removeControl(drawControl);drawControl=null;}if(dirty)save();}
+ };
+ map.on(L.Draw.Event.CREATED,e=>{
+   const layer=e.layer,kind=layer instanceof L.Marker?'Equipment / location marker':'Operational zone';
+   const name=prompt('Name this '+kind.toLowerCase()+':',kind==='Operational zone'?'New operational zone':'New equipment marker');
+   if(name===null){return;}
+   const color=prompt('Colour (CSS name or hex)',kind==='Operational zone'?'#35c58b':'#e3a63f')||'#35c58b';
+   attachFeature(layer,{name:name.trim()||kind,kind,color});drawn.addLayer(layer);setDirty();renderList();
+ });
+ map.on(L.Draw.Event.EDITED,()=>{setDirty();renderList();});
+ map.on(L.Draw.Event.DELETED,()=>{setDirty();renderList();});
+ document.getElementById('saveMap').onclick=save;
+ document.getElementById('exportMap').onclick=()=>{
+   const blob=new Blob([JSON.stringify(drawn.toGeoJSON(),null,2)],{type:'application/geo+json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+   a.href=url;a.download='plant-tracker-map.geojson';a.click();URL.revokeObjectURL(url);
+ };
+ document.getElementById('importMap').onclick=()=>document.getElementById('importFile').click();
+ document.getElementById('importFile').onchange=async e=>{
+   const file=e.target.files[0];if(!file)return;
+   try{const geo=JSON.parse(await file.text());if(!geo||!['FeatureCollection','Feature'].includes(geo.type))throw Error('Not a GeoJSON Feature or FeatureCollection');drawn.clearLayers();L.geoJSON(geo,{pointToLayer:(f,ll)=>L.marker(ll),onEachFeature:(f,l)=>{attachFeature(l,f.properties||{});drawn.addLayer(l);}});setDirty();save();}
+   catch(err){alert('Import failed: '+err.message);}e.target.value='';
+ };
+ document.getElementById('clearMap').onclick=()=>{if(confirm('Delete every custom boundary, zone and marker from this browser map?')){drawn.clearLayers();setDirty();renderList();}};
+ document.getElementById('satellite').onclick=()=>{if(map.hasLayer(streets))map.removeLayer(streets);if(!map.hasLayer(imagery))imagery.addTo(map)};
+ document.getElementById('streets').onclick=()=>{if(map.hasLayer(imagery))map.removeLayer(imagery);if(!map.hasLayer(streets))streets.addTo(map)};
+ document.getElementById('locate').onclick=()=>map.setView(yard,18);
+ loadSaved();setTimeout(()=>map.invalidateSize(),250);
+ window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+})();
+</script>
+</body></html>

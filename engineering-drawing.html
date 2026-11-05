@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10201c">
+<title>Engineering Drawing · Plant Tracker</title>
+<style>
+:root{color-scheme:dark;--bg:#0c1714;--panel:#14251f;--line:#2b4038;--text:#eef5f1;--muted:#a7b8b0;--green:#1d7057}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+header{height:auto;min-height:68px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);background:#10201c;position:sticky;top:0;z-index:5}
+.brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:.12em}.brand img{width:36px;height:36px}
+.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.24em}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+button,a{border:1px solid #385349;background:#1a3028;color:var(--text);border-radius:10px;padding:9px 13px;font:600 13px inherit;text-decoration:none;cursor:pointer}
+button:hover,a:hover{background:#25483b}main{padding:18px;max-width:1500px;margin:auto}
+.heading{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:2px 0 14px}.heading h1{font-size:clamp(20px,3vw,28px);margin:0}.heading p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.viewer{height:calc(100dvh - 160px);min-height:360px;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:#202723;position:relative;touch-action:none;cursor:grab}
+.viewer.dragging{cursor:grabbing}.stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform-origin:center;will-change:transform}
+.stage img{display:block;max-width:none;max-height:none;width:auto;height:auto;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);padding:7px 11px;background:#0c1714dd;border:1px solid #52665d;border-radius:30px;color:#d7e2dc;font-size:11px;white-space:nowrap;pointer-events:none}
+@media(max-width:600px){header{padding:10px 12px}.brand{font-size:12px}.actions{gap:5px}.actions button,.actions a{padding:8px 9px;font-size:12px}main{padding:12px}.heading{display:block}.viewer{height:calc(100dvh - 180px);min-height:320px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><img src="assets/plant-mark.svg" alt=""><span>PLANT<small>TRACKER · ENGINEERING</small></span></div>
+  <nav class="actions" aria-label="Drawing controls">
+    <button id="fit">Fit</button><button id="minus" aria-label="Zoom out">−</button><button id="plus" aria-label="Zoom in">＋</button><button id="rotate">Rotate 90°</button><a href="index.html">Back to plant</a>
+  </nav>
+</header>
+<main>
+  <div class="heading"><div><h1>Engineering drawing</h1><p>F_D1.jpg · Pan by dragging, zoom with controls or pinch on touchscreens.</p></div></div>
+  <section class="viewer" id="viewer" aria-label="Zoomable engineering drawing">
+    <div class="stage" id="stage"><img id="drawing" src="F_D1.jpg" alt="Original plant engineering process flow drawing"></div>
+    <div class="hint">Drag to pan · Pinch or use ＋ / − to zoom</div>
+  </section>
+</main>
+<script>
+(()=>{
+ const viewer=document.getElementById('viewer'),stage=document.getElementById('stage'),img=document.getElementById('drawing');
+ let scale=1,rotation=0,x=0,y=0,drag=null,pointers=new Map(),pinchStart=null;
+ function render(){stage.style.transform=`translate(${x}px,${y}px) scale(${scale}) rotate(${rotation}deg)`}
+ function fit(){if(!img.naturalWidth)return;const r=viewer.getBoundingClientRect();const rotated=Math.abs(rotation%180)===90;const iw=rotated?img.naturalHeight:img.naturalWidth,ih=rotated?img.naturalWidth:img.naturalHeight;scale=Math.min((r.width-30)/iw,(r.height-30)/ih,1);x=0;y=0;render()}
+ function zoom(f){scale=Math.max(.12,Math.min(8,scale*f));render()}
+ img.addEventListener('load',fit);if(img.complete)fit();
+ document.getElementById('fit').onclick=fit;document.getElementById('plus').onclick=()=>zoom(1.25);document.getElementById('minus').onclick=()=>zoom(.8);
+ document.getElementById('rotate').onclick=()=>{rotation=(rotation+90)%360;fit()};
+ viewer.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.12:.89)},{passive:false});
+ viewer.addEventListener('pointerdown',e=>{viewer.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,ox:x,oy:y};if(pointers.size===2){const a=[...pointers.values()];pinchStart={dist:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),scale};}viewer.classList.add('dragging')});
+ viewer.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&drag){x=drag.ox+(e.clientX-drag.x);y=drag.oy+(e.clientY-drag.y);render()}else if(pointers.size===2&&pinchStart){const a=[...pointers.values()];const d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);scale=Math.max(.12,Math.min(8,pinchStart.scale*d/pinchStart.dist));render()}});
+ function end(e){pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;if(!pointers.size){drag=null;viewer.classList.remove('dragging')}else if(pointers.size===1){const p=[...pointers.values()][0];drag={x:p.x,y:p.y,ox:x,oy:y}}}
+ viewer.addEventListener('pointerup',end);viewer.addEventListener('pointercancel',end);
+ window.addEventListener('resize',()=>{if(scale<=1.01)fit()});
+})();
+</script>
+</body>
+</html>
