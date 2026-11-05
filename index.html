@@ -117,6 +117,17 @@
         }
         .ui-btn:hover { background: #4da8da; color: #000; }
         
+        .connection-panel { position:absolute; left:15px; bottom:15px; z-index:1200; width:min(330px,calc(100vw - 30px)); background:rgba(20,20,35,.96); border:1px solid #4da8da; border-radius:9px; padding:12px; box-shadow:0 5px 18px rgba(0,0,0,.45); display:none; }
+        .connection-panel.visible { display:block; }
+        .connection-panel strong { color:#fff; }
+        .connection-panel p { color:#b9c5d4; font-size:12px; line-height:1.4; margin:5px 0 8px; }
+        .connection-actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+        .connection-actions button { border:1px solid #4da8da; border-radius:6px; padding:9px 7px; background:#1e1e2f; color:#d9efff; font-weight:700; cursor:pointer; }
+        .connection-actions button.primary { background:#4da8da; color:#07131c; }
+        .connection-actions button:disabled { opacity:.4; cursor:not-allowed; }
+        .connection-status { color:#8ed0f5 !important; }
+        .connection-route-label { color:#fff; background:rgba(15,22,32,.9); border:1px solid #f1d44d; border-radius:4px; padding:2px 5px; font-size:11px; font-weight:700; white-space:nowrap; }
+        @media (max-width:600px) { .floating-btn-group { flex-wrap:wrap; right:8px; top:8px; } .ui-btn { padding:9px 10px; font-size:12px; } .connection-panel { bottom:10px; left:10px; } }
         .leaflet-top.leaflet-left { top: 60px; left: 5px; }
     </style>
 </head>
@@ -131,6 +142,7 @@
         <button id="engineeringModeBtn" class="ui-btn map-mode-btn active" onclick="switchMapView('engineering')">Engineering Drawing</button>
         <button id="satelliteModeBtn" class="ui-btn map-mode-btn" onclick="switchMapView('satellite')">Satellite View</button>
         <button id="recenterBtn" class="ui-btn" onclick="recenterCurrentMap()">&#x26F6; Recenter</button>
+        <button class="ui-btn" onclick="toggleConnectionPanel()">↗ Connections</button>
     </div>
 
     <!-- The Slide-In Menu -->
@@ -204,6 +216,18 @@
             <p id="plantLocationStatus">No plant location saved yet.</p>
         </div>
         <div id="satelliteAttributionNote" class="satellite-attribution-note" style="display:none">Satellite imagery © Esri and its data providers</div>
+        <div id="connectionPanel" class="connection-panel">
+            <strong>Flexible connecting lines</strong>
+            <p>Routes are stored independently for each map. Select Draw, tap multiple points to create bends, then finish. Use Edit vertices to reshape saved routes.</p>
+            <div class="connection-actions">
+                <button class="primary" id="drawConnectionBtn" onclick="startConnectionDrawing()">＋ Draw route</button>
+                <button id="finishConnectionBtn" onclick="finishConnectionDrawing()" disabled>Finish route</button>
+                <button id="cancelConnectionBtn" onclick="cancelConnectionDrawing()" disabled>Cancel</button>
+                <button id="editConnectionsBtn" onclick="toggleConnectionEditing()">Edit help</button>
+            </div>
+            <p id="connectionStatus" class="connection-status">Ready. Current map: Engineering drawing.</p>
+            <p>Each route can have its own name, direction and geometry. Equipment linking by ID can be added in the next database phase.</p>
+        </div>
     </div>
     
     <script>
@@ -211,6 +235,14 @@
         let satelliteMap = null;
         let plantSiteMarker = null;
         let plantSite = JSON.parse(localStorage.getItem('plant_site_location_v1') || 'null');
+        let connectionRoutes = JSON.parse(localStorage.getItem('plant_connection_routes_v1') || '[]');
+        let connectionDrawing = false;
+        let connectionEditing = false;
+        let pendingConnectionPoints = [];
+        let engineeringConnectionLayer = null;
+        let satelliteConnectionLayer = null;
+        let engineeringEditControl = null;
+        let satelliteEditControl = null;
 
         function toggleSidebar() {
             document.body.classList.toggle('sidebar-closed');
@@ -224,7 +256,17 @@
                 maxZoom: 19,
                 attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
             }).addTo(satelliteMap);
-            satelliteMap.on('click', function (event) { setPlantSite(event.latlng.lat, event.latlng.lng, true); });
+            renderConnectionRoutes();
+            satelliteConnectionLayer = new L.FeatureGroup().addTo(satelliteMap);
+            renderConnectionRoutes();
+            satelliteMap.on('click', function (event) {
+                if (connectionDrawing && currentMapView === 'satellite') { addConnectionPoint(event.latlng); return; }
+                setPlantSite(event.latlng.lat, event.latlng.lng, true);
+            });
+            satelliteEditControl = new L.Control.Draw({ draw:false, edit:{ featureGroup:satelliteConnectionLayer, remove:false } });
+            satelliteMap.addControl(satelliteEditControl);
+            satelliteMap.on(L.Draw.Event.EDITED, persistEditedConnections);
+            satelliteMap.on(L.Draw.Event.EDITMOVE, function(){});
             if (plantSite && Number.isFinite(plantSite.lat) && Number.isFinite(plantSite.lng)) {
                 document.getElementById('plantLatitude').value = plantSite.lat;
                 document.getElementById('plantLongitude').value = plantSite.lng;
@@ -243,6 +285,7 @@
             document.getElementById('engineeringModeBtn').classList.toggle('active', engineering);
             document.getElementById('satelliteModeBtn').classList.toggle('active', !engineering);
             if (!engineering) initializeSatelliteMap();
+            updateConnectionStatus();
             setTimeout(() => { if (engineering) map.invalidateSize(); else satelliteMap.invalidateSize(); }, 100);
         }
 
@@ -279,6 +322,84 @@
             satelliteMap.setView([lat, lng], 17);
         }
 
+        // --- INDEPENDENT CONNECTION ROUTES (engineering vs geographical) ---
+        function toggleConnectionPanel() { document.getElementById('connectionPanel').classList.toggle('visible'); }
+        function activeConnectionLayer() { return currentMapView === 'engineering' ? engineeringConnectionLayer : satelliteConnectionLayer; }
+        function activeMapInstance() { return currentMapView === 'engineering' ? map : satelliteMap; }
+        function routeColor(route) { return route.color || '#f1d44d'; }
+        function updateConnectionStatus(message) {
+            const count = connectionRoutes.filter(r => r.mapType === currentMapView).length;
+            document.getElementById('connectionStatus').textContent = message || ('Current map: ' + (currentMapView === 'engineering' ? 'Engineering drawing' : 'Satellite map') + ' · ' + count + ' saved route(s).');
+            document.getElementById('finishConnectionBtn').disabled = !connectionDrawing || pendingConnectionPoints.length < 2;
+            document.getElementById('cancelConnectionBtn').disabled = !connectionDrawing;
+        }
+        function startConnectionDrawing() {
+            if (currentMapView === 'satellite' && !satelliteMap) initializeSatelliteMap();
+            connectionDrawing = true; connectionEditing = false; pendingConnectionPoints = [];
+            const layer = activeConnectionLayer();
+            if (layer) layer.eachLayer(l => { if (l._pendingConnection) layer.removeLayer(l); });
+            updateConnectionStatus('Drawing mode: tap the map to add route points. Add bends wherever needed.');
+            activeMapInstance().doubleClickZoom.disable();
+        }
+        function addConnectionPoint(latlng) {
+            if (!connectionDrawing) return;
+            pendingConnectionPoints.push([latlng.lat, latlng.lng]);
+            const layer = activeConnectionLayer();
+            if (window.pendingRoutePreview) layer.removeLayer(window.pendingRoutePreview);
+            if (pendingConnectionPoints.length > 1) {
+                window.pendingRoutePreview = L.polyline(pendingConnectionPoints, {color:'#f1d44d',weight:5,dashArray:'8,7',opacity:.95}).addTo(layer);
+                window.pendingRoutePreview._pendingConnection = true;
+            }
+            updateConnectionStatus(pendingConnectionPoints.length + ' point(s) added. Add more bends or finish the route.');
+        }
+        function finishConnectionDrawing() {
+            if (!connectionDrawing || pendingConnectionPoints.length < 2) return alert('Add at least two points to create a route.');
+            const name = prompt('Enter a route / conveyor name:');
+            if (!name) return;
+            if (window.pendingRoutePreview && activeConnectionLayer()) activeConnectionLayer().removeLayer(window.pendingRoutePreview);
+            connectionRoutes.push({ id:'route_' + Date.now(), name:name.trim(), mapType:currentMapView, points:pendingConnectionPoints.map(p=>[...p]), color:'#f1d44d', direction:true });
+            localStorage.setItem('plant_connection_routes_v1', JSON.stringify(connectionRoutes));
+            connectionDrawing = false; pendingConnectionPoints = []; window.pendingRoutePreview = null;
+            activeMapInstance().doubleClickZoom.enable(); renderConnectionRoutes();
+            updateConnectionStatus('Route saved independently on this map.');
+        }
+        function cancelConnectionDrawing() {
+            if (window.pendingRoutePreview && activeConnectionLayer()) activeConnectionLayer().removeLayer(window.pendingRoutePreview);
+            window.pendingRoutePreview = null; pendingConnectionPoints = []; connectionDrawing = false;
+            if (activeMapInstance()) activeMapInstance().doubleClickZoom.enable();
+            updateConnectionStatus('Route drawing cancelled.');
+        }
+        function renderConnectionRoutes() {
+            if (engineeringConnectionLayer) engineeringConnectionLayer.clearLayers();
+            if (satelliteConnectionLayer) satelliteConnectionLayer.clearLayers();
+            connectionRoutes.forEach(route => {
+                const target = route.mapType === 'engineering' ? engineeringConnectionLayer : satelliteConnectionLayer;
+                if (!target || !route.points || route.points.length < 2) return;
+                const line = L.polyline(route.points, {color:routeColor(route),weight:4,opacity:.95,dashArray:'10,6',interactive:true}).addTo(target);
+                line.routeId = route.id;
+                line.bindTooltip(route.name, {sticky:true, className:'connection-route-label'});
+                if (route.direction) {
+                    const mid = route.points[Math.floor(route.points.length/2)];
+                    L.circleMarker(mid,{radius:4,color:'#fff',weight:1,fillColor:routeColor(route),fillOpacity:1,interactive:false}).addTo(target);
+                }
+            });
+        }
+        function persistEditedConnections(event) {
+            event.layers.eachLayer(layer => {
+                const route = connectionRoutes.find(r => r.id === layer.routeId);
+                if (route) route.points = layer.getLatLngs().map(p => [p.lat,p.lng]);
+            });
+            localStorage.setItem('plant_connection_routes_v1', JSON.stringify(connectionRoutes));
+            renderConnectionRoutes(); updateConnectionStatus('Edited route geometry saved.');
+        }
+        function toggleConnectionEditing() {
+            const control = currentMapView === 'engineering' ? engineeringEditControl : satelliteEditControl;
+            if (!control) return;
+            // Leaflet.draw exposes the edit toolbar through its control; clicking the pencil
+            // button enables vertex handles for routes on the currently active map only.
+            updateConnectionStatus('Use the pencil control on the map toolbar to drag route vertices, then save the edit.');
+        }
+
         // --- DATABASE SETUP (v4) ---
         // Incrementing storage key to avoid breaking changes with old schemas
         let zones = JSON.parse(localStorage.getItem('plant_zones_v4')) || [];
@@ -297,6 +418,12 @@
         
         L.imageOverlay('F_D1.jpg', bounds).addTo(map);
         map.fitBounds(bounds);
+        engineeringConnectionLayer = new L.FeatureGroup().addTo(map);
+        map.on('click', function(event) { if (connectionDrawing && currentMapView === 'engineering') addConnectionPoint(event.latlng); });
+        engineeringEditControl = new L.Control.Draw({ draw:false, edit:{ featureGroup:engineeringConnectionLayer, remove:false } });
+        map.addControl(engineeringEditControl);
+        map.on(L.Draw.Event.EDITED, persistEditedConnections);
+        renderConnectionRoutes();
 
         function updateMapZoomClass() {
             const currentZoom = map.getZoom();

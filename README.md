@@ -1,32 +1,23 @@
-# Steel Plant Tracker - Industrial Equipment Symbols
+# Plant Tracker – Satellite Map + Flexible Connections
 
-This update introduces customizable equipment icons to your machine zones, making the map instantly readable based on equipment type.
+## Included
+- `index.html` – updated Leaflet-based plant tracker.
+- `F_D1.jpg` – engineering drawing used by the engineering map.
 
-## How to use the new feature:
-1. Use the drawing toolbar to draw a zone or pin a location (just like before).
-2. Open the sliding **Menu**.
-3. Under **Section 1: Machine Settings**, select the zone you just drew.
-4. Use the new **Assign Equipment Type/Symbol** dropdown to choose an industrial symbol (e.g., Furnace, Conveyor, Valve, Motor).
-5. Click **Update Machine Data**.
+## New flexible connection feature
+1. Open **Connections** from the top toolbar.
+2. Choose **Draw route**.
+3. Tap/click two or more points on the active map. Add extra points to create bends.
+4. Choose **Finish route** and enter a route name.
+5. Switch between Engineering Drawing and Satellite View: each map stores its own route geometry.
+6. Use the Leaflet Draw pencil/edit control on the left map toolbar to drag route vertices. Finish the edit to save it.
 
-The symbol will immediately appear inside the machine's badge on the map, right next to the LED status light. These symbols also carry over into the dropdown lists to make managing the plant much easier.
+Engineering drawing coordinates and satellite latitude/longitude are deliberately independent. Routes are stored in browser LocalStorage under `plant_connection_routes_v1`; they are not yet synchronized across devices or saved to Supabase. Equipment IDs and automatic endpoint snapping are planned for the database integration phase.
 
-## Instructions:
-1. Extract the ZIP.
-2. Ensure your `F_D1.jpg` is in the same folder.
-3. Overwrite your previous `index.html` with this new one and push to GitHub Pages.
+## Deployment
+Keep `index.html` and `F_D1.jpg` in the same directory. Replace the existing files in your GitHub Pages repository and commit/push. Leaflet and Leaflet Draw are loaded from public CDNs, and satellite imagery uses Esri World Imagery tiles with attribution.
 
-
-## Satellite map view (new)
-
-The application now has two map modes: **Engineering Drawing** and **Satellite View**. The engineering drawing continues to use `F_D1.jpg`; the satellite view uses Esri World Imagery tiles through Leaflet.
-
-### Set the plant location
-1. Open the website and select **Satellite View**.
-2. Enter the plant latitude and longitude and select **Go to plant location**, or click the plant location directly on the satellite map.
-3. The selected site marker and coordinates are saved in that browser's LocalStorage.
-
-The first satellite view opens over India as a general starting view. It does not identify the actual plant automatically. The plant coordinates must be supplied and verified. Existing engineering-drawing zones remain on the engineering map; they are not automatically georeferenced or copied onto the satellite map.
-
-### Satellite imagery and internet access
-Satellite tiles require an internet connection. The map displays Esri World Imagery with attribution. Tile availability, zoom level, usage terms and service conditions are controlled by Esri and its imagery providers; this is not an offline imagery package or a guarantee of unlimited free commercial use.
+## Important
+- The plant location marker is a reference point, not a verified equipment survey.
+- Routes drawn on each map are independent; they do not automatically georeference the engineering drawing.
+- Browser LocalStorage is device/browser-specific. Back up data before clearing browser storage.
