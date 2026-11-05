@@ -189,6 +189,102 @@
             .badge-workers { display:none; }
         }
 
+        /* Visual upgrade: holographic stage + KPI strip */
+        :root {
+            --cyan: #4da8da;
+            --cyan-2: #7ad0ff;
+            --ink: #0c1018;
+            --panel: rgba(16, 22, 34, 0.92);
+        }
+        #sidebar {
+            background:
+                radial-gradient(120% 80% at 0% 0%, rgba(77,168,218,.16), transparent 55%),
+                linear-gradient(180deg, #161b28 0%, #121722 100%);
+            border-right: 1px solid rgba(122,208,255,.22);
+        }
+        .control-panel {
+            background: linear-gradient(180deg, rgba(40,48,68,.85), rgba(24,30,44,.9));
+            border: 1px solid rgba(122,208,255,.16);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+        }
+        .kpi-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 16px; }
+        .kpi-chip { background: rgba(8,12,20,.55); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 8px 6px; text-align: center; }
+        .kpi-chip b { display: block; font-size: 18px; line-height: 1.1; }
+        .kpi-chip span { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #9eb0c4; }
+        .kpi-chip.run b { color: #3dff8a; }
+        .kpi-chip.mnt b { color: #ffc14d; }
+        .kpi-chip.off b { color: #ff5d6c; }
+        .manpower-badge { pointer-events: auto; cursor: pointer; }
+        .manpower-badge:hover {
+            border-color: rgba(122,208,255,.7);
+            box-shadow: 0 0 0 1px rgba(77,168,218,.35), 0 14px 30px rgba(0,0,0,.55), 0 0 22px rgba(77,168,218,.25);
+        }
+        .holo-overlay {
+            position: fixed; inset: 0; z-index: 4000; display: none;
+            align-items: center; justify-content: center;
+            background: radial-gradient(ellipse at center, rgba(8,18,32,.35), rgba(0,0,0,.72));
+            perspective: 1200px;
+        }
+        .holo-overlay.open { display: flex; }
+        .holo-stage { width: min(420px, calc(100vw - 28px)); transform-style: preserve-3d; }
+        .holo-card {
+            position: relative; transform-style: preserve-3d;
+            background: linear-gradient(160deg, rgba(18,28,46,.92), rgba(8,12,22,.88));
+            border: 1px solid rgba(122,208,255,.45);
+            border-radius: 18px; padding: 18px 18px 16px;
+            box-shadow: 0 30px 70px rgba(0,0,0,.55), 0 0 40px rgba(77,168,218,.18), inset 0 0 40px rgba(77,168,218,.08);
+            overflow: hidden; color: #e8f4ff;
+            transition: transform .08s linear;
+        }
+        .holo-scan {
+            position: absolute; left: 0; right: 0; height: 40%;
+            background: linear-gradient(180deg, transparent, rgba(122,208,255,.16), transparent);
+            animation: holo-scan 2.8s linear infinite; pointer-events: none;
+        }
+        @keyframes holo-scan { from { top: -40%; } to { top: 110%; } }
+        .holo-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; position: relative; z-index: 1; }
+        .holo-kicker { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: #7ad0ff; }
+        .holo-title { margin: 4px 0 0; font-size: 22px; letter-spacing: .02em; }
+        .holo-close {
+            width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(122,208,255,.4);
+            background: rgba(8,14,24,.7); color: #fff; font-size: 20px; cursor: pointer;
+        }
+        .holo-symbol {
+            width: 88px; height: 88px; margin: 14px auto 6px; border-radius: 50%;
+            display: grid; place-items: center; font-size: 40px;
+            background: radial-gradient(circle at 40% 35%, rgba(122,208,255,.35), rgba(8,14,24,.2) 62%);
+            border: 1px solid rgba(122,208,255,.4);
+            box-shadow: 0 12px 24px rgba(0,0,0,.35), inset 0 0 18px rgba(77,168,218,.25);
+            transform: translateZ(28px);
+            animation: holo-float 3.2s ease-in-out infinite;
+        }
+        @keyframes holo-float { 50% { transform: translateZ(28px) translateY(-6px); } }
+        .holo-status { text-align: center; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #b7c9da; margin-bottom: 12px; }
+        .holo-status em { font-style: normal; font-weight: 800; }
+        .holo-status.run em { color: #3dff8a; }
+        .holo-status.mnt em { color: #ffc14d; }
+        .holo-status.off em { color: #ff5d6c; }
+        .holo-people { display: grid; gap: 8px; max-height: 220px; overflow: auto; position: relative; z-index: 1; }
+        .holo-person {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
+            border-radius: 12px; padding: 8px 10px;
+            transform: translateZ(12px);
+        }
+        .holo-avatar {
+            width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+            font-weight: 800; color: #07131c; background: linear-gradient(135deg, #7ad0ff, #4da8da);
+            box-shadow: 0 6px 12px rgba(77,168,218,.35);
+        }
+        .holo-person strong { display: block; font-size: 14px; }
+        .holo-person span { font-size: 11px; color: #9eb6cc; letter-spacing: .06em; text-transform: uppercase; }
+        .holo-empty { color: #9eb6cc; font-size: 13px; text-align: center; padding: 8px 0 4px; }
+        .holo-foot { margin-top: 12px; font-size: 11px; color: #7f93a8; text-align: center; position: relative; z-index: 1; }
+        @media (max-width: 640px) {
+            .holo-title { font-size: 18px; }
+            .holo-symbol { width: 72px; height: 72px; font-size: 32px; }
+        }
+
     </style>
 </head>
 <body class="sidebar-closed">
@@ -208,7 +304,9 @@
 
     <!-- The Slide-In Menu -->
     <div id="sidebar">
-        <h2>1. Machine Settings <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button></h2>
+        <h2>Plant O&M <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button></h2>
+        <div id="kpiStrip" class="kpi-strip"></div>
+        <h2>1. Machine Settings</h2>
         <div class="control-panel">
             <label>Select Drawn Zone</label>
             <select id="settingZoneSelect" onchange="loadZoneSettings()"></select>
@@ -313,6 +411,12 @@
             </div>
             <p id="connectionStatus" class="connection-status">Ready. Current map: Engineering drawing.</p>
             <p>Each route can have its own name, direction and geometry. Equipment linking by ID can be added in the next database phase.</p>
+        </div>
+    </div>
+
+    <div id="holoOverlay" class="holo-overlay" onclick="if(event.target===this) closeHolo()">
+        <div class="holo-stage" id="holoStage">
+            <div class="holo-card" id="holoCard"></div>
         </div>
     </div>
     
@@ -839,9 +943,10 @@
                     const people = assigned[z.id] || [];
                     const workersHtml = people.length ? '<div class="badge-workers">' + people.map(w => `<div class="worker-item"><span>${escapeHtml(w.name)}</span><span>${escapeHtml(w.role)}</span></div>`).join('') + '</div>' : '';
                     const linkedTag = z.linkGroupId ? '<span class="linked-zone-tag">LINKED ZONE</span>' : '';
-                    const html = `<div class="manpower-badge"><div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${z.symbol || ''}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div><div class="badge-count">${people.length} Personnel</div>${linkedTag}${workersHtml}</div>`;
+                    const html = `<div class="manpower-badge" title="Open 3D manpower view"><div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${z.symbol || ''}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div><div class="badge-count">${people.length} Personnel</div>${linkedTag}${workersHtml}</div>`;
                     const icon = L.divIcon({className:'transparent-icon',iconSize:[0,0],iconAnchor:[0,0],html});
-                    const badgeMarker=L.marker(center,{icon,interactive:false}).addTo(satelliteMap);
+                    const badgeMarker=L.marker(center,{icon,interactive:true,zIndexOffset:600}).addTo(satelliteMap);
+                    badgeMarker.on('click', function () { openHolo(z.id); });
                     badgeMarker._badgeAnchor=center;
                     satelliteZoneBadgeMarkers[z.id] = badgeMarker;
                 }
@@ -916,9 +1021,81 @@
             updateDropdowns();
             refreshTransferZoneOptions();
             renderWorkerList(); 
+            renderKpi();
             renderMapMarkers();
             if (satelliteMap) renderSatelliteZones();
         }
+
+        function renderKpi() {
+            const strip = document.getElementById('kpiStrip');
+            if (!strip) return;
+            const all = [...zones, ...satelliteZones];
+            const count = (s) => all.filter(z => (z.status || 'running') === s).length;
+            strip.innerHTML = `
+                <div class="kpi-chip run"><b>${count('running')}</b><span>Running</span></div>
+                <div class="kpi-chip mnt"><b>${count('maintenance')}</b><span>Maint.</span></div>
+                <div class="kpi-chip off"><b>${count('offline')}</b><span>Offline</span></div>`;
+        }
+
+        function workersForZone(zone) {
+            if (!zone) return [];
+            return workers.filter(w => {
+                if (!w.zoneId) return false;
+                if (w.zoneId === zone.id) return true;
+                const assigned = findZoneById(w.zoneId);
+                return !!(zone.linkGroupId && assigned && assigned.linkGroupId === zone.linkGroupId);
+            });
+        }
+
+        function openHolo(zoneId) {
+            const zone = findZoneById(zoneId);
+            if (!zone) return;
+            const stat = zone.status || 'running';
+            const cls = stat === 'running' ? 'run' : stat === 'maintenance' ? 'mnt' : 'off';
+            const label = stat === 'running' ? 'Running' : stat === 'maintenance' ? 'Maintenance' : 'Offline';
+            const people = workersForZone(zone);
+            const peopleHtml = people.length
+                ? people.map(w => {
+                    const initials = escapeHtml(String(w.name || '?').trim().split(/\s+/).slice(0,2).map(p => p[0] || '').join('').toUpperCase() || '?');
+                    return `<div class="holo-person"><div class="holo-avatar">${initials}</div><div><strong>${escapeHtml(w.name)}</strong><span>${escapeHtml(w.role)}</span></div></div>`;
+                }).join('')
+                : '<div class="holo-empty">No manpower assigned to this zone.</div>';
+            document.getElementById('holoCard').innerHTML = `
+                <div class="holo-scan"></div>
+                <div class="holo-top">
+                    <div>
+                        <div class="holo-kicker">Augmented manpower</div>
+                        <h3 class="holo-title">${escapeHtml(zone.name)}</h3>
+                    </div>
+                    <button class="holo-close" type="button" onclick="closeHolo()" aria-label="Close">&times;</button>
+                </div>
+                <div class="holo-symbol">${zone.symbol || '🏭'}</div>
+                <div class="holo-status ${cls}"><em>${label}</em> · ${people.length} on site</div>
+                <div class="holo-people">${peopleHtml}</div>
+                <div class="holo-foot">Drag across the card — it tracks like a floating AR panel.</div>`;
+            const overlay = document.getElementById('holoOverlay');
+            overlay.classList.add('open');
+            const card = document.getElementById('holoCard');
+            card.style.transform = 'rotateX(8deg) rotateY(-12deg)';
+        }
+
+        function closeHolo() {
+            const overlay = document.getElementById('holoOverlay');
+            if (overlay) overlay.classList.remove('open');
+        }
+
+        document.addEventListener('mousemove', function (event) {
+            const overlay = document.getElementById('holoOverlay');
+            const card = document.getElementById('holoCard');
+            if (!overlay || !overlay.classList.contains('open') || !card) return;
+            const rect = card.getBoundingClientRect();
+            const x = (event.clientX - rect.left) / rect.width - 0.5;
+            const y = (event.clientY - rect.top) / rect.height - 0.5;
+            card.style.transform = `rotateY(${x * 18}deg) rotateX(${-y * 14}deg)`;
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') closeHolo();
+        });
         
         function renderMapMarkers() {
             drawnItems.clearLayers();
@@ -982,11 +1159,11 @@
                     const badgeIcon = L.divIcon({
                         className: 'transparent-icon', iconSize: [0, 0], iconAnchor: [0, 0], 
                         html: `
-                            <div class="manpower-badge">
+                            <div class="manpower-badge" title="Open 3D manpower view">
                                 <div class="badge-header">
                                     <div class="led led-${stat}"></div>
                                     ${symbolHtml}
-                                    <div class="badge-zone">${zone.name}</div>
+                                    <div class="badge-zone">${escapeHtml(zone.name)}</div>
                                 </div>
                                 <div class="badge-count">${count} Personnel Active</div>
                                 ${workersHtml}
@@ -994,7 +1171,9 @@
                     });
                     
                     if (centerPoint) {
-                        badgeMarkers[zone.id] = L.marker(centerPoint, { icon: badgeIcon, interactive: false }).addTo(map);
+                        const marker = L.marker(centerPoint, { icon: badgeIcon, interactive: true, zIndexOffset: 500 }).addTo(map);
+                        marker.on('click', function () { openHolo(zone.id); });
+                        badgeMarkers[zone.id] = marker;
                     }
                 }
             });
