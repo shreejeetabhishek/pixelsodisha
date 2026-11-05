@@ -3,47 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plant Flow Tracker - Advanced Operations</title>
+    <title>Plant Flow Tracker - Industrial Symbols</title>
     
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
-    <!-- Leaflet Draw -->
+    <!-- Leaflet Draw CSS & JS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
     <style>
         body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; overflow: hidden; background: #121212; color: #e0e0e0; }
         
-        /* Sliding Dark Mode Sidebar */
         #sidebar { 
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 360px; 
-            max-width: 90vw; 
-            background: #1e1e2f; 
-            border-right: 1px solid #2a2a40; 
-            padding: 20px; 
-            overflow-y: auto; 
-            box-sizing: border-box; 
-            z-index: 2000; 
-            box-shadow: 4px 0 15px rgba(0,0,0,0.5); 
-            transform: translateX(0);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute; left: 0; top: 0; bottom: 0; width: 360px; max-width: 90vw; 
+            background: #1e1e2f; border-right: 1px solid #2a2a40; padding: 20px; overflow-y: auto; 
+            box-sizing: border-box; z-index: 2000; box-shadow: 4px 0 15px rgba(0,0,0,0.5); 
+            transform: translateX(0); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
-        body.sidebar-closed #sidebar {
-            transform: translateX(-100%);
-            box-shadow: none;
-        }
-
+        body.sidebar-closed #sidebar { transform: translateX(-100%); box-shadow: none; }
         #map-container { flex-grow: 1; position: relative; height: 100vh; width: 100vw; display: flex; flex-direction: column; }
         #map { flex-grow: 1; background-color: #0a0a10; width: 100%; height: 100%; }
         
-        /* Typography & Controls */
         h2 { font-size: 15px; margin-top: 0; color: #4da8da; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #2a2a40; padding-bottom: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
         .close-sidebar-btn { background: none; border: none; color: #a0a0b5; font-size: 20px; cursor: pointer; }
         .close-sidebar-btn:hover { color: #fff; }
@@ -64,11 +47,9 @@
         .role-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #33334d; color: #a0a0b5; text-transform: uppercase; }
         
         /* 
-         * PROFESSIONAL MAP BADGES 
-         * Added custom CSS scaling based on map classes
+         * UPGRADED MAP BADGES WITH EMOJI SYMBOLS
          */
         .transparent-icon { overflow: visible !important; }
-        
         .manpower-badge { 
             position: absolute; transform: translate(-50%, -50%);
             background: rgba(20, 20, 35, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -79,6 +60,10 @@
         }
         
         .badge-header { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        
+        /* New styling for the industrial symbol */
+        .machine-symbol { font-size: 20px; filter: drop-shadow(0 0 2px rgba(255,255,255,0.3)); }
+        
         .badge-zone { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.3s; }
         .badge-count { font-size: 12px; font-weight: 600; color: #a0a0b5; transition: all 0.3s; }
         
@@ -86,33 +71,22 @@
         .worker-item { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px; margin-bottom: 2px; }
         .worker-item:last-child { border: none; margin: 0; padding: 0; }
         
-        /* 
-         * ZOOM LEVEL STYLING 
-         * Handles the scaling and hiding of badge elements when zoomed out
-         */
-        
-        /* Zoom Level < -1 (Fully Zoomed Out - e.g. -2) */
-        .zoom-level-out .manpower-badge {
-            padding: 4px 8px;
-            min-width: auto;
-            background: rgba(20, 20, 35, 0.95);
-        }
+        /* ZOOM SCALING */
+        .zoom-level-out .manpower-badge { padding: 4px 8px; min-width: auto; background: rgba(20, 20, 35, 0.95); }
         .zoom-level-out .badge-header { margin: 0; padding: 0; border: none; }
-        .zoom-level-out .badge-zone { display: none; } /* Hide Zone Name */
-        .zoom-level-out .badge-count { display: none; } /* Hide Count Text */
-        .zoom-level-out .badge-workers { display: none; } /* Hide Worker List */
-        .zoom-level-out .led { margin: 0; transform: scale(1.5); } /* Just show a larger LED dot */
+        .zoom-level-out .badge-zone { display: none; } 
+        .zoom-level-out .badge-count { display: none; } 
+        .zoom-level-out .badge-workers { display: none; } 
+        .zoom-level-out .machine-symbol { font-size: 14px; margin-left: 4px; } /* Keep symbol small when zoomed out */
+        .zoom-level-out .led { margin: 0; transform: scale(1.5); } 
         
-        /* Zoom Level -1 (Mid-level Zoom) */
-        .zoom-level-mid .manpower-badge {
-            padding: 8px 12px;
-            min-width: 100px;
-        }
+        .zoom-level-mid .manpower-badge { padding: 8px 12px; min-width: 100px; }
         .zoom-level-mid .badge-zone { font-size: 11px; }
-        .zoom-level-mid .badge-workers { display: none; } /* Hide Worker List to save space */
+        .zoom-level-mid .badge-workers { display: none; } 
         .zoom-level-mid .badge-count { font-size: 10px; }
+        .zoom-level-mid .machine-symbol { font-size: 16px; }
 
-        /* ADVANCED ANIMATIONS & MACHINE STATUS */
+        /* ADVANCED ANIMATIONS */
         .led { width: 12px; height: 12px; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px currentColor; transition: transform 0.3s; }
         .led-running { background: #00ff00; color: #00ff00; animation: blink-fast 0.5s infinite; }
         .led-maintenance { background: #ffaa00; color: #ffaa00; animation: blink-slow 2s infinite; }
@@ -135,7 +109,6 @@
         }
         .ui-btn:hover { background: #4da8da; color: #000; }
         
-        /* Adjust Leaflet Draw Control */
         .leaflet-top.leaflet-left { top: 60px; left: 5px; }
     </style>
 </head>
@@ -159,13 +132,29 @@
             <label>Select Drawn Zone</label>
             <select id="settingZoneSelect" onchange="loadZoneSettings()"></select>
             
+            <label>Assign Equipment Type/Symbol</label>
+            <select id="zoneSymbolSelect">
+                <!-- Industrial symbols using emoji fonts for universal browser support without external assets -->
+                <option value="">-- None --</option>
+                <option value="⚙️">⚙️ Motor / Gearbox</option>
+                <option value="🏭">🏭 General Plant Area</option>
+                <option value="🔥">🔥 Furnace / Boiler</option>
+                <option value="🚰">🚰 Valve / Washery</option>
+                <option value="🚚">🚚 Truck Loading</option>
+                <option value="⚡">⚡ Electrical Substation</option>
+                <option value="⚖️">⚖️ Weighbridge / Scale</option>
+                <option value="🌡️">🌡️ Temperature Control</option>
+                <option value="🏗️">🏗️ Crane / Heavy Lift</option>
+                <option value="🔄">🔄 Conveyor System</option>
+            </select>
+
             <label>Operating Status</label>
             <select id="zoneStatusSelect">
                 <option value="running">🟢 Running (Animated)</option>
                 <option value="maintenance">🟡 Maintenance (Standby)</option>
                 <option value="offline">🔴 Offline (Stopped)</option>
             </select>
-            <button class="action-btn" onclick="updateZoneStatus()" style="background:#28a745; color:white;">Update Machine Status</button>
+            <button class="action-btn" onclick="updateZoneStatus()" style="background:#28a745; color:white;">Update Machine Data</button>
         </div>
 
         <h2>2. Assign Manpower</h2>
@@ -198,19 +187,19 @@
     </div>
     
     <script>
-        // --- SLIDE NAVIGATION LOGIC ---
         function toggleSidebar() {
             document.body.classList.toggle('sidebar-closed');
             setTimeout(() => { map.invalidateSize(); }, 300);
         }
 
-        // --- DATABASE SETUP (v3) ---
-        let zones = JSON.parse(localStorage.getItem('plant_zones_v3')) || [];
-        let workers = JSON.parse(localStorage.getItem('plant_workers_v3')) || [];
+        // --- DATABASE SETUP (v4) ---
+        // Incrementing storage key to avoid breaking changes with old schemas
+        let zones = JSON.parse(localStorage.getItem('plant_zones_v4')) || [];
+        let workers = JSON.parse(localStorage.getItem('plant_workers_v4')) || [];
         
         function saveToDatabase() { 
-            localStorage.setItem('plant_zones_v3', JSON.stringify(zones));
-            localStorage.setItem('plant_workers_v3', JSON.stringify(workers)); 
+            localStorage.setItem('plant_zones_v4', JSON.stringify(zones));
+            localStorage.setItem('plant_workers_v4', JSON.stringify(workers)); 
             renderDashboard(); 
         }
 
@@ -222,27 +211,21 @@
         L.imageOverlay('F_D1.jpg', bounds).addTo(map);
         map.fitBounds(bounds);
 
-        // --- ZOOM EVENT LISTENER FOR SCALING BADGES ---
         function updateMapZoomClass() {
             const currentZoom = map.getZoom();
             const mapContainer = document.getElementById('map');
             
-            // Remove previous classes
             mapContainer.classList.remove('zoom-level-out', 'zoom-level-mid');
             
             if (currentZoom < -1) {
-                // Fully zoomed out: Show only tiny dots
                 mapContainer.classList.add('zoom-level-out');
             } else if (currentZoom === -1) {
-                // Mid-zoom: Show count/title but hide long worker list
                 mapContainer.classList.add('zoom-level-mid');
             }
-            // Zoom >= 0: Default full badge size is active
         }
         
-        // Run on load and every time zoom changes
         map.on('zoomend', updateMapZoomClass);
-        updateMapZoomClass(); // Initial trigger
+        updateMapZoomClass(); 
 
         // --- DRAWING TOOLS ---
         var drawnItems = new L.FeatureGroup();
@@ -267,7 +250,8 @@
             var zoneName = prompt("Enter a name for this Location/Route:");
             if (!zoneName) return; 
 
-            let newZone = { id: 'z_' + Date.now(), name: zoneName, type: type, status: 'running' };
+            // Initialize new zones with empty symbol
+            let newZone = { id: 'z_' + Date.now(), name: zoneName, type: type, status: 'running', symbol: '' };
             if (type === 'marker') { newZone.latlng = layer.getLatLng(); } 
             else { newZone.latlngs = layer.getLatLngs(); }
             
@@ -289,16 +273,25 @@
         function loadZoneSettings() {
             const zId = document.getElementById('settingZoneSelect').value;
             const z = zones.find(x => x.id === zId);
-            if(z) { document.getElementById('zoneStatusSelect').value = z.status || 'running'; }
+            if(z) { 
+                document.getElementById('zoneStatusSelect').value = z.status || 'running';
+                document.getElementById('zoneSymbolSelect').value = z.symbol || '';
+            }
         }
 
         function updateZoneStatus() {
             const zId = document.getElementById('settingZoneSelect').value;
             const newStatus = document.getElementById('zoneStatusSelect').value;
+            const newSymbol = document.getElementById('zoneSymbolSelect').value;
+            
             if(!zId) return alert('Select a zone first.');
             
             const z = zones.find(x => x.id === zId);
-            if(z) { z.status = newStatus; saveToDatabase(); }
+            if(z) { 
+                z.status = newStatus; 
+                z.symbol = newSymbol;
+                saveToDatabase(); 
+            }
         }
 
         // --- RENDER LOGIC ---
@@ -351,7 +344,6 @@
                 const assignedWorkers = zoneWorkers[zone.id];
                 const count = assignedWorkers.length;
                 
-                // Always draw a badge for zones, optionally for lines if they have workers
                 if (zone.type !== 'polyline' || count > 0) {
                     
                     let workersHtml = '';
@@ -360,12 +352,16 @@
                         workersHtml = `<div class="badge-workers">${items}</div>`;
                     }
                     
+                    // Render the symbol if it exists for this zone
+                    let symbolHtml = zone.symbol ? `<div class="machine-symbol">${zone.symbol}</div>` : '';
+                    
                     const badgeIcon = L.divIcon({
                         className: 'transparent-icon', iconSize: [0, 0], iconAnchor: [0, 0], 
                         html: `
                             <div class="manpower-badge">
                                 <div class="badge-header">
                                     <div class="led led-${stat}"></div>
+                                    ${symbolHtml}
                                     <div class="badge-zone">${zone.name}</div>
                                 </div>
                                 <div class="badge-count">${count} Personnel Active</div>
@@ -388,9 +384,11 @@
             assignSelect.innerHTML = '<option value="">-- Select Location --</option>';
             
             zones.forEach(z => {
-                let icon = z.type === 'polyline' ? '🔗 ' : '📍 ';
-                let opt1 = document.createElement('option'); opt1.value = z.id; opt1.innerHTML = icon + z.name;
-                let opt2 = document.createElement('option'); opt2.value = z.id; opt2.innerHTML = icon + z.name;
+                // Use the custom symbol in the dropdown if available, otherwise default to line/pin
+                let displayIcon = z.symbol ? z.symbol + ' ' : (z.type === 'polyline' ? '🔗 ' : '📍 ');
+                
+                let opt1 = document.createElement('option'); opt1.value = z.id; opt1.innerHTML = displayIcon + z.name;
+                let opt2 = document.createElement('option'); opt2.value = z.id; opt2.innerHTML = displayIcon + z.name;
                 
                 setSelect.appendChild(opt1);
                 assignSelect.appendChild(opt2);
@@ -407,7 +405,10 @@
             
             workers.forEach((worker, index) => {
                 let optionsHtml = '<option value="">-- Reassign --</option>';
-                optionsHtml += zones.map(z => `<option value="${z.id}" ${worker.zoneId === z.id ? 'selected' : ''}>${z.name}</option>`).join('');
+                optionsHtml += zones.map(z => {
+                    let displayIcon = z.symbol ? z.symbol + ' ' : '';
+                    return `<option value="${z.id}" ${worker.zoneId === z.id ? 'selected' : ''}>${displayIcon}${z.name}</option>`
+                }).join('');
                 
                 const card = document.createElement('div');
                 card.className = 'worker-card';

@@ -1,12 +1,15 @@
-# Steel Plant Tracker - Zoom Scaling Update
+# Steel Plant Tracker - Industrial Equipment Symbols
 
-This update introduces dynamic CSS scaling to the map badges, solving the issue of badges overlapping and clustering when the map is fully zoomed out on a mobile device.
+This update introduces customizable equipment icons to your machine zones, making the map instantly readable based on equipment type.
 
-## Key Changes:
-1. **Dynamic Visibility based on Zoom**: 
-   - When you are **zoomed in** (`zoom: 0` or higher), the badge shows full details: Location, count, and the exact names and roles of every worker.
-   - When you zoom out slightly (`zoom: -1`), the badge shrinks, hiding the long list of workers to save space, but keeping the zone name and headcount visible.
-   - When you **zoom all the way out** (`zoom: -2`), the badge collapses completely into just the animated LED light. This gives you a clear, uncluttered view of the entire plant floor and its overall machine statuses (Green/Amber/Red dots) without text overlap.
+## How to use the new feature:
+1. Use the drawing toolbar to draw a zone or pin a location (just like before).
+2. Open the sliding **Menu**.
+3. Under **Section 1: Machine Settings**, select the zone you just drew.
+4. Use the new **Assign Equipment Type/Symbol** dropdown to choose an industrial symbol (e.g., Furnace, Conveyor, Valve, Motor).
+5. Click **Update Machine Data**.
+
+The symbol will immediately appear inside the machine's badge on the map, right next to the LED status light. These symbols also carry over into the dropdown lists to make managing the plant much easier.
 
 ## Instructions:
 1. Extract the ZIP.
