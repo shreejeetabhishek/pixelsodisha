@@ -3,33 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plant Flow Tracker - Offline Prototype</title>
+    <title>Plant Flow Tracker - Vectorized Pro</title>
+    
+    <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Leaflet Draw CSS & JS for Vector Drawing -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
     <style>
-        body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; overflow: hidden; transition: all 0.3s ease; }
         
-        /* Default Desktop Layout (Side-by-Side) */
-        #sidebar { width: 320px; background: #f8f9fa; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; box-sizing: border-box; }
-        #map { flex-grow: 1; height: 100vh; background-color: #e5e5e5; }
+        /* Layouts */
+        #sidebar { width: 320px; background: #f8f9fa; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; box-sizing: border-box; transition: all 0.3s ease; }
+        #map-container { flex-grow: 1; position: relative; height: 100vh; display: flex; flex-direction: column; }
+        #map { flex-grow: 1; background-color: #e5e5e5; width: 100%; height: 100%; }
         
+        /* Full Screen Button */
+        .fullscreen-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: #333; color: #fff; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .fullscreen-btn:hover { background: #555; }
+        
+        /* Sidebar Elements */
         h2 { font-size: 18px; margin-top: 0; }
         .control-group { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #ccc; }
-        input, select, button { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
-        button { background: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; }
-        button:hover { background: #004494; }
+        input, select, button.action-btn { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        button.action-btn { background: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; border-radius: 4px; }
+        button.action-btn:hover { background: #004494; }
+        button.danger-btn { background: #dc3545; }
+        button.danger-btn:hover { background: #c82333; }
         
         .worker-card { background: white; padding: 10px; margin-bottom: 10px; border: 1px solid #eee; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .worker-name { font-weight: bold; font-size: 14px; }
         
-        .manpower-badge { background: #d32f2f; color: white; font-weight: bold; padding: 5px 10px; border-radius: 12px; text-align: center; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 12px; white-space: nowrap; }
+        .manpower-badge { background: #d32f2f; color: white; font-weight: bold; padding: 5px 10px; border-radius: 12px; text-align: center; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 12px; white-space: nowrap; line-height: 1.2; }
         .optimal { background: #2e7d32; }
 
-        /* Responsive Mobile Layout (Stacked Vertically) */
+        /* Responsive Mobile Layout */
         @media (max-width: 768px) {
-            body { flex-direction: column; }
-            #map { height: 55vh; width: 100%; flex-grow: 0; }
-            #sidebar { height: 45vh; width: 100%; border-right: none; border-top: 2px solid #ddd; }
+            body:not(.fullscreen-mode) { flex-direction: column; }
+            body:not(.fullscreen-mode) #map-container { height: 55vh; flex-grow: 0; }
+            body:not(.fullscreen-mode) #sidebar { height: 45vh; width: 100%; border-right: none; border-top: 2px solid #ddd; }
         }
+
+        /* Fullscreen Mode Classes */
+        body.fullscreen-mode #sidebar { display: none !important; }
+        body.fullscreen-mode #map-container { height: 100vh; width: 100vw; }
     </style>
 </head>
 <body>
@@ -37,70 +57,189 @@
         <h2>Add Manpower</h2>
         <div class="control-group">
             <input type="text" id="workerName" placeholder="Worker Name (e.g. Ramesh)">
-            <select id="zoneSelect"></select>
-            <button onclick="addWorker()">Assign Worker</button>
+            <select id="zoneSelect">
+                <!-- Populated dynamically -->
+            </select>
+            <button class="action-btn" onclick="addWorker()">Assign Worker</button>
         </div>
+        
         <h2>Active Workforce</h2>
         <div id="workerList"></div>
         <br>
-        <button style="background: #dc3545;" onclick="clearData()">Reset Database</button>
+        <button class="action-btn danger-btn" onclick="clearData()">Reset Database</button>
+        <p style="font-size: 11px; color: #666; margin-top: 15px;">Use the drawing tools on the map to create new vectorized zones or points.</p>
     </div>
-    <div id="map"></div>
+
+    <div id="map-container">
+        <button class="fullscreen-btn" onclick="toggleFullscreen()">&#x26F6; Full Page View</button>
+        <div id="map"></div>
+    </div>
     
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Adjusted zones based on a generic diagram size to ensure they remain somewhat visible
-        const zones = [
-            { id: 'z1', name: 'Truck Unloading Station', x: 300.0, y: 600.0 },
-            { id: 'z2', name: 'Coal Washery', x: 600.0, y: 400.0 },
-            { id: 'z3', name: 'Furnace 1', x: 900.0, y: 240.0 },
-            { id: 'z4', name: 'Middling Yard', x: 960.0, y: 640.0 }
-        ];
+        // --- 1. FULLSCREEN TOGGLE LOGIC ---
+        function toggleFullscreen() {
+            document.body.classList.toggle('fullscreen-mode');
+            // Force Leaflet to recalculate map size after layout shift
+            setTimeout(() => { map.invalidateSize(); }, 300);
+        }
+
+        // --- 2. DATABASE & STATE (LocalStorage) ---
+        let zones = JSON.parse(localStorage.getItem('plant_zones'));
+        // If no zones exist, load a sample array
+        if (!zones || zones.length === 0) {
+            zones = [
+                { id: 'z1', name: 'Sample Zone', type: 'rectangle', latlngs: [[ [300, 300], [300, 700], [600, 700], [600, 300] ]] }
+            ];
+        }
         
         let workers = JSON.parse(localStorage.getItem('plant_workers')) || [];
-        function saveToDatabase() { localStorage.setItem('plant_workers', JSON.stringify(workers)); renderDashboard(); }
         
-        const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 2 });
-        const imgWidth = 1200; const imgHeight = 800; const bounds = [[0, 0], [imgHeight, imgWidth]];
+        function saveToDatabase() { 
+            localStorage.setItem('plant_zones', JSON.stringify(zones));
+            localStorage.setItem('plant_workers', JSON.stringify(workers)); 
+            renderDashboard(); 
+        }
+
+        // --- 3. MAP INITIALIZATION ---
+        const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 3 });
         
-        // POINTING TO THE LOCAL IMAGE IN THE ZIP
-        const placeholderImg = 'F_D1.jpg';
+        // ** UPDATED: Image dimensions and filename F_D1.jpg **
+        const imgWidth = 2000; // Adjust if your image is wider
+        const imgHeight = 1500; // Adjust if your image is taller
+        const bounds = [[0, 0], [imgHeight, imgWidth]];
+        
+        const placeholderImg = 'F_D1.jpg'; // Pointing to user's exact filename
         L.imageOverlay(placeholderImg, bounds).addTo(map);
         map.fitBounds(bounds);
+
+        // --- 4. VECTOR DRAWING TOOLS SETUP ---
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
         
-        let zoneMarkers = {};
-        
-        function renderDashboard() { renderSidebar(); renderMapMarkers(); }
+        var drawControl = new L.Control.Draw({
+            draw: {
+                polyline: false, // Not needed for zones
+                circle: false,   // Leaflet simple CRS sometimes struggles with circles
+                circlemarker: false,
+                marker: true,    // For pinpoint locations
+                polygon: true,   // For vectorized irregular zones
+                rectangle: true  // For vectorized box zones
+            },
+            edit: {
+                featureGroup: drawnItems
+            }
+        });
+        map.addControl(drawControl);
+
+        // Handle newly drawn vectors
+        map.on(L.Draw.Event.CREATED, function (e) {
+            var type = e.layerType, layer = e.layer;
+            
+            var zoneName = prompt("Enter a name for this new Zone/Location:");
+            if (!zoneName) return; // Cancel if no name
+
+            let newZone = { id: 'z_' + Date.now(), name: zoneName, type: type };
+
+            if (type === 'marker') {
+                newZone.latlng = layer.getLatLng();
+            } else {
+                newZone.latlngs = layer.getLatLngs();
+            }
+            
+            zones.push(newZone);
+            saveToDatabase();
+        });
+
+        // Handle deleted vectors
+        map.on(L.Draw.Event.DELETED, function (e) {
+            e.layers.eachLayer(function (layer) {
+                if (layer.zoneId) {
+                    // Remove from zones array
+                    zones = zones.filter(z => z.id !== layer.zoneId);
+                    // Unassign workers in that zone
+                    workers.forEach(w => { if(w.zoneId === layer.zoneId) w.zoneId = null; });
+                }
+            });
+            saveToDatabase();
+        });
+
+        // --- 5. RENDER LOGIC ---
+        let badgeMarkers = {}; // Store manpower badges
+
+        function renderDashboard() { 
+            renderSidebar(); 
+            renderMapMarkers(); 
+        }
         
         function renderMapMarkers() {
-            Object.values(zoneMarkers).forEach(marker => map.removeLayer(marker));
-            zoneMarkers = {};
+            // Clear existing layers
+            drawnItems.clearLayers();
+            Object.values(badgeMarkers).forEach(m => map.removeLayer(m));
+            badgeMarkers = {};
             
+            // Calculate headcount
             const headcounts = {};
             zones.forEach(z => headcounts[z.id] = 0);
-            workers.forEach(w => { if(headcounts[w.zoneId] !== undefined) headcounts[w.zoneId]++; });
+            workers.forEach(w => { if(w.zoneId && headcounts[w.zoneId] !== undefined) headcounts[w.zoneId]++; });
             
             zones.forEach(zone => {
+                let centerPoint;
+                let shapeLayer;
+
+                // Draw the vector shapes
+                if (zone.type === 'marker') {
+                    centerPoint = [zone.latlng.lat, zone.latlng.lng];
+                    shapeLayer = L.circleMarker(centerPoint, { radius: 8, color: '#3388ff', fillOpacity: 0.5 });
+                } else if (zone.type === 'polygon' || zone.type === 'rectangle') {
+                    shapeLayer = L.polygon(zone.latlngs, {color: '#3388ff', weight: 2, fillOpacity: 0.15});
+                    centerPoint = shapeLayer.getBounds().getCenter();
+                }
+
+                // Add to feature group so they can be edited/deleted
+                if(shapeLayer) {
+                    shapeLayer.zoneId = zone.id; // Tag for deletion logic
+                    drawnItems.addLayer(shapeLayer);
+                }
+                
+                // Draw the Manpower Badge over the center of the zone
                 const count = headcounts[zone.id];
                 const statusClass = count > 0 ? 'optimal' : '';
                 const badgeIcon = L.divIcon({
                     className: 'custom-div-icon',
                     html: `<div class="manpower-badge ${statusClass}">${count} Workers<br><small>${zone.name}</small></div>`,
-                    iconSize: [120, 40],
-                    iconAnchor: [60, 20]
+                    iconSize: [120, 45],
+                    iconAnchor: [60, 22]
                 });
-                const marker = L.marker([zone.y, zone.x], { icon: badgeIcon }).addTo(map);
-                zoneMarkers[zone.id] = marker;
+                
+                if (centerPoint) {
+                    badgeMarkers[zone.id] = L.marker(centerPoint, { icon: badgeIcon, interactive: false }).addTo(map);
+                }
             });
         }
         
         function renderSidebar() {
+            // Update dropdown list
+            const addZoneSelect = document.getElementById('zoneSelect');
+            addZoneSelect.innerHTML = '<option value="">-- Select Zone --</option>';
+            zones.forEach(z => {
+                let opt = document.createElement('option');
+                opt.value = z.id;
+                opt.innerHTML = z.name;
+                addZoneSelect.appendChild(opt);
+            });
+
+            // Update Worker List
             const listDiv = document.getElementById('workerList');
             listDiv.innerHTML = '';
-            if(workers.length === 0) listDiv.innerHTML = '<p style="color:#666; font-size:14px;">No workers assigned.</p>';
+            
+            if(workers.length === 0) {
+                listDiv.innerHTML = '<p style="color:#666; font-size:14px;">No workers assigned.</p>';
+            }
             
             workers.forEach((worker, index) => {
-                let optionsHtml = zones.map(z => `<option value="${z.id}" ${worker.zoneId === z.id ? 'selected' : ''}>${z.name}</option>`).join('');
+                let optionsHtml = '<option value="">-- Unassigned --</option>';
+                optionsHtml += zones.map(z => `<option value="${z.id}" ${worker.zoneId === z.id ? 'selected' : ''}>${z.name}</option>`).join('');
+                
                 const card = document.createElement('div');
                 card.className = 'worker-card';
                 card.innerHTML = `<div class="worker-name">${worker.name}</div><select onchange="updateWorkerZone(${index}, this.value)">${optionsHtml}</select>`;
@@ -108,26 +247,32 @@
             });
         }
         
+        // --- 6. ACTION FUNCTIONS ---
         function addWorker() {
             const nameInput = document.getElementById('workerName');
             const zoneSelect = document.getElementById('zoneSelect');
             if (nameInput.value.trim() === '') return alert('Enter a worker name');
+            if (zoneSelect.value === '') return alert('Please create or select a zone first.');
+            
             workers.push({ id: Date.now(), name: nameInput.value.trim(), zoneId: zoneSelect.value });
             nameInput.value = '';
             saveToDatabase();
         }
         
-        function updateWorkerZone(workerIndex, newZoneId) { workers[workerIndex].zoneId = newZoneId; saveToDatabase(); }
-        function clearData() { if(confirm('Delete all worker data?')) { workers = []; saveToDatabase(); } }
+        function updateWorkerZone(workerIndex, newZoneId) { 
+            workers[workerIndex].zoneId = newZoneId; 
+            saveToDatabase(); 
+        }
         
-        const addZoneSelect = document.getElementById('zoneSelect');
-        zones.forEach(z => {
-            let opt = document.createElement('option');
-            opt.value = z.id;
-            opt.innerHTML = z.name;
-            addZoneSelect.appendChild(opt);
-        });
+        function clearData() { 
+            if(confirm('Delete all worker and zone data? This will reset the map.')) { 
+                workers = []; 
+                zones = [];
+                saveToDatabase(); 
+            } 
+        }
         
+        // Initial render
         renderDashboard();
     </script>
 </body>
