@@ -267,7 +267,30 @@
             *, *::before, *::after { scroll-behavior:auto !important; transition-duration:.01ms !important; }
         }
 
-    </style>
+    
+        /* Adaptive satellite labels: zoom-dependent map information */
+        .satellite-dot { width:9px; height:9px; border-radius:50%; border:1px solid rgba(255,255,255,.9); }
+        .satellite-compact-tag { display:flex; align-items:center; gap:6px; max-width:150px; padding:5px 9px;
+            border-radius:14px; background:rgba(15,22,32,.91); color:#f4f7fb; border:1px solid rgba(125,190,225,.65);
+            box-shadow:0 2px 8px rgba(0,0,0,.38); font-size:11px; font-weight:700; line-height:1.2; white-space:nowrap; }
+        .satellite-tag-dot { width:7px; height:7px; flex:0 0 7px; border-radius:50%; box-shadow:0 0 5px currentColor; }
+        .satellite-info-card { min-width:112px !important; max-width:160px; padding:7px 9px !important; font-size:11px; }
+        .satellite-info-card .badge-header { gap:5px; margin-bottom:3px; padding-bottom:3px; }
+        .satellite-info-card .machine-symbol { font-size:14px; }
+        .satellite-info-card .badge-count { font-size:10px; }
+        .satellite-detail-card { min-width:130px !important; max-width:190px; }
+        .satellite-cluster-icon { background:transparent; border:0; }
+        .satellite-cluster { display:flex; align-items:center; justify-content:center; width:38px; height:38px;
+            border-radius:50%; color:#fff; background:rgba(23,119,177,.96); border:3px solid rgba(255,255,255,.95);
+            box-shadow:0 2px 12px rgba(0,0,0,.55); font-size:13px; font-weight:800; cursor:pointer; }
+        .satellite-cluster:after { content:''; position:absolute; inset:-6px; border:1px solid rgba(77,168,218,.6); border-radius:50%; }
+        @media(max-width:640px) {
+            .satellite-compact-tag { max-width:118px; font-size:10px; padding:4px 7px; }
+            .satellite-info-card { max-width:132px; min-width:100px !important; padding:6px 7px !important; }
+            .satellite-detail-card { max-width:155px; }
+        }
+
+</style>
 </head>
 <body class="sidebar-closed">
 
@@ -410,6 +433,7 @@
         let satelliteZones = JSON.parse(localStorage.getItem('plant_satellite_zones_v1') || '[]');
         let satelliteDrawnItems = null;
         let satelliteZoneBadgeMarkers = {};
+        let satelliteClusterMarkers = [];
         let satelliteDrawControl = null;
         let zoneAlignment = { active:false, phase:'source', pairs:[], pendingSource:null };
         // Only accept the new four-control-point projective transform.
@@ -1218,8 +1242,7 @@
                     const icon = L.divIcon({className:'transparent-icon',iconSize:[0,0],iconAnchor:[0,0],html});
                     const badgeMarker=L.marker(badgeAnchor,{icon,interactive:true,draggable:true,bubblingMouseEvents:false}).addTo(satelliteMap);
                     badgeMarker._badgeAnchor=badgeAnchor;
-                    badgeMarker._badgeBaseAnchor=L.latLng(center);
-                    badgeMarker._zoneId=z.id;
+                    badgeMarker._zoneInfo={zone:z,status,people,linked:!!z.linkGroupId};
                     makeBadgeDraggable(badgeMarker,z,satelliteMap,'satellite');
                     satelliteZoneBadgeMarkers[z.id] = badgeMarker;
                 }
@@ -1227,77 +1250,107 @@
             layoutSatelliteBadges();
         }
 
+        function satelliteBadgeIcon(marker, zoom) {
+            const info = marker._zoneInfo || {};
+            const z = info.zone || {};
+            const status = info.status || 'running';
+            const color = status === 'running' ? '#00d66b' : status === 'maintenance' ? '#ffaa00' : '#ff3030';
+            const people = info.people || [];
+            let html = '';
+            let size = [1,1], anchor = [0,0];
+
+            if (zoom <= 15) {
+                html = `<div class="satellite-dot" style="background:${color};box-shadow:0 0 0 3px ${color}33,0 0 9px ${color}99"></div>`;
+            } else if (zoom <= 17) {
+                const shortName = String(z.name || 'Zone');
+                html = `<div class="satellite-compact-tag"><span class="satellite-tag-dot" style="background:${color}"></span><span>${escapeHtml(shortName.length > 19 ? shortName.slice(0,18)+'…' : shortName)}</span></div>`;
+            } else if (zoom <= 19) {
+                html = `<div class="manpower-badge satellite-info-card">
+                    <div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${escapeHtml(z.symbol || '')}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div>
+                    <div class="badge-count">${people.length} Personnel</div>
+                    ${info.linked ? '<span class="linked-zone-tag">LINKED ZONE</span>' : ''}
+                </div>`;
+            } else {
+                const workersHtml = people.length ? '<div class="badge-workers">' + people.map(w => `<div class="worker-item"><span>${escapeHtml(w.name)}</span><span>${escapeHtml(w.role)}</span></div>`).join('') + '</div>' : '';
+                html = `<div class="manpower-badge satellite-detail-card">
+                    <div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${escapeHtml(z.symbol || '')}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div>
+                    <div class="badge-count">${people.length} Personnel</div>
+                    ${info.linked ? '<span class="linked-zone-tag">LINKED ZONE</span>' : ''}${workersHtml}
+                    <span class="badge-drag-note">DRAG TO POSITION</span>
+                </div>`;
+            }
+            return L.divIcon({className:'transparent-icon',iconSize:size,iconAnchor:anchor,html});
+        }
+
         function updateSatelliteBadgeScale() {
             if (!satelliteMap) return;
             const zoom = satelliteMap.getZoom();
-            // Keep badges readable on mobile while gently scaling with map zoom.
-            const scale = Math.max(0.72, Math.min(1.18, Math.pow(1.12, zoom - 16)));
+            const scale = zoom >= 20 ? 1 : 0.94;
             document.querySelectorAll('#satellite-map .manpower-badge').forEach(el => {
                 el.style.setProperty('--badge-scale', String(scale));
             });
         }
+
         function layoutSatelliteBadges() {
             if (!satelliteMap) return;
+            const zoom = satelliteMap.getZoom();
+            const markers = Object.values(satelliteZoneBadgeMarkers);
+            satelliteClusterMarkers.forEach(m => satelliteMap.removeLayer(m));
+            satelliteClusterMarkers = [];
 
-            // Automatically spread untouched badges in screen space so several
-            // zones at nearby coordinates remain readable on narrow mobile screens.
-            // A manually dragged badge always keeps its saved geographic anchor.
-            const occupied = [];
-            const container = satelliteMap.getContainer();
-            const width = container.clientWidth;
-            const height = container.clientHeight;
-            const candidates = [
-                [0,0], [0,-76], [76,0], [0,76], [-76,0],
-                [76,-76], [76,76], [-76,76], [-76,-76],
-                [0,-152], [152,0], [0,152], [-152,0],
-                [152,-76], [152,76], [-152,-76], [-152,76],
-                [0,-228], [228,0], [0,228], [-228,0]
-            ];
-
-            Object.values(satelliteZoneBadgeMarkers).forEach(marker => {
-                const zone = satelliteZones.find(z => z.id === marker._zoneId);
-                if (!zone) return;
-
-                if (zone.badgeAnchorMode === 'manual' && validBadgeAnchor(zone.badgeAnchor)) {
-                    marker.setLatLng([Number(zone.badgeAnchor.lat), Number(zone.badgeAnchor.lng)]);
-                    const manualEl = marker.getElement()?.querySelector('.manpower-badge');
-                    if (manualEl) {
-                        const p = satelliteMap.latLngToContainerPoint(marker.getLatLng());
-                        occupied.push({left:p.x-manualEl.offsetWidth/2, right:p.x+manualEl.offsetWidth/2,
-                            top:p.y-manualEl.offsetHeight/2, bottom:p.y+manualEl.offsetHeight/2});
+            // At detailed zoom levels every zone is shown independently.
+            if (zoom >= 18) {
+                markers.forEach(marker => {
+                    marker.setOpacity(1);
+                    marker.setIcon(satelliteBadgeIcon(marker, zoom));
+                    if (marker.dragging) {
+                        if (zoom >= 20) marker.dragging.enable();
+                        else marker.dragging.disable();
                     }
+                });
+                updateSatelliteBadgeScale();
+                return;
+            }
+
+            // At overview/compact levels, group nearby zones in screen pixels.
+            const groups = [];
+            const radius = zoom <= 15 ? 42 : 58;
+            markers.forEach(marker => {
+                const point = satelliteMap.latLngToContainerPoint(marker.getLatLng());
+                let group = groups.find(g => g.points.some(p => point.distanceTo(p) <= radius));
+                if (!group) { group = {markers:[],points:[]}; groups.push(group); }
+                group.markers.push(marker);
+                group.points.push(point);
+            });
+
+            groups.forEach(group => {
+                if (group.markers.length === 1) {
+                    const marker = group.markers[0];
+                    marker.setOpacity(1);
+                    marker.setIcon(satelliteBadgeIcon(marker, zoom));
+                    if (marker.dragging) marker.dragging.disable();
                     return;
                 }
 
-                const base = marker._badgeBaseAnchor || marker._badgeAnchor;
-                if (!base) return;
-                const basePoint = satelliteMap.latLngToContainerPoint(base);
-                const el = marker.getElement()?.querySelector('.manpower-badge');
-                const badgeW = el ? el.offsetWidth : 140;
-                const badgeH = el ? el.offsetHeight : 58;
-                let chosen = null;
-
-                for (const [dx,dy] of candidates) {
-                    const x = basePoint.x + dx, y = basePoint.y + dy;
-                    const rect = {left:x-badgeW/2-8, right:x+badgeW/2+8,
-                        top:y-badgeH/2-8, bottom:y+badgeH/2+8};
-                    if (rect.left < 4 || rect.right > width-4 || rect.top < 4 || rect.bottom > height-4) continue;
-                    const collision = occupied.some(r => !(rect.right < r.left || rect.left > r.right ||
-                        rect.bottom < r.top || rect.top > r.bottom));
-                    if (!collision) { chosen = {x,y,rect}; break; }
-                }
-
-                if (!chosen) {
-                    const [dx,dy] = candidates[occupied.length % candidates.length];
-                    const x = Math.max(badgeW/2+4, Math.min(width-badgeW/2-4, basePoint.x+dx));
-                    const y = Math.max(badgeH/2+4, Math.min(height-badgeH/2-4, basePoint.y+dy));
-                    chosen = {x,y,rect:{left:x-badgeW/2-8,right:x+badgeW/2+8,top:y-badgeH/2-8,bottom:y+badgeH/2+8}};
-                }
-
-                occupied.push(chosen.rect);
-                marker.setLatLng(satelliteMap.containerPointToLatLng([chosen.x,chosen.y]));
+                group.markers.forEach(marker => marker.setOpacity(0));
+                const bounds = L.latLngBounds(group.markers.map(m => m.getLatLng()));
+                const center = bounds.getCenter();
+                const count = group.markers.length;
+                const html = `<div class="satellite-cluster" role="button" aria-label="${count} zones">${count}</div>`;
+                const cluster = L.marker(center, {
+                    icon:L.divIcon({className:'satellite-cluster-icon',html,iconSize:[38,38],iconAnchor:[19,19]}),
+                    keyboard:true, bubblingMouseEvents:false
+                }).addTo(satelliteMap);
+                cluster.on('click', () => {
+                    const targetZoom = Math.min(satelliteMap.getMaxZoom(), Math.max(satelliteMap.getZoom()+2, 18));
+                    if (bounds.getNorthEast().equals(bounds.getSouthWest())) satelliteMap.setView(center,targetZoom);
+                    else satelliteMap.fitBounds(bounds,{padding:[48,48],maxZoom:targetZoom});
+                });
+                satelliteClusterMarkers.push(cluster);
             });
+            updateSatelliteBadgeScale();
         }
+
         function escapeHtml(value) { return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         function findZoneById(id) { return zones.find(z => z.id === id) || satelliteZones.find(z => z.id === id); }
 
