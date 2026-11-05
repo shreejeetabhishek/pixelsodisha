@@ -1027,14 +1027,56 @@
             saveToDatabase();
         });
 
-        map.on(L.Draw.Event.DELETED, function (e) {
-            e.layers.eachLayer(function (layer) {
-                if (layer.zoneId) {
-                    zones = zones.filter(z => z.id !== layer.zoneId);
-                    workers.forEach(w => { if(w.zoneId === layer.zoneId) w.zoneId = null; });
+        // Delete a logical zone across both map representations. A transferred
+        // satellite copy is identified by transferredFrom; manually linked pairs
+        // are identified by their shared linkGroupId. Unlinked satellite-only
+        // zones are intentionally preserved when an engineering zone is deleted.
+        function deleteZoneWithLinkedPeer(mapKind, zoneId) {
+            const engineeringZone = zones.find(z => z.id === zoneId);
+            const satelliteZone = satelliteZones.find(z => z.id === zoneId);
+            const source = mapKind === 'engineering' ? engineeringZone : satelliteZone;
+            if (!source) return [];
+
+            const removeIds = new Set([zoneId]);
+            if (mapKind === 'engineering') {
+                satelliteZones.forEach(peer => {
+                    if (peer.transferredFrom === zoneId ||
+                        (source.linkGroupId && peer.linkGroupId === source.linkGroupId)) {
+                        removeIds.add(peer.id);
+                    }
+                });
+            } else {
+                zones.forEach(peer => {
+                    if ((source.linkGroupId && peer.linkGroupId === source.linkGroupId) ||
+                        source.transferredFrom === peer.id) {
+                        removeIds.add(peer.id);
+                    }
+                });
+                // If this is a transferred copy, also remove any other satellite
+                // copies belonging to the same engineering source.
+                if (source.transferredFrom) {
+                    satelliteZones.forEach(peer => {
+                        if (peer.transferredFrom === source.transferredFrom) removeIds.add(peer.id);
+                    });
                 }
+            }
+
+            zones = zones.filter(z => !removeIds.has(z.id));
+            satelliteZones = satelliteZones.filter(z => !removeIds.has(z.id));
+            workers.forEach(w => { if (removeIds.has(w.zoneId)) w.zoneId = null; });
+            return [...removeIds];
+        }
+
+        map.on(L.Draw.Event.DELETED, function (e) {
+            const removedIds = new Set();
+            e.layers.eachLayer(function (layer) {
+                if (layer.zoneId) deleteZoneWithLinkedPeer('engineering', layer.zoneId).forEach(id => removedIds.add(id));
             });
             saveToDatabase();
+            if (removedIds.size) {
+                const status = document.getElementById('zoneLinkStatus');
+                if (status) status.textContent = removedIds.size + ' linked zone record(s) removed from both views.';
+            }
         });
 
         // --- SATELLITE MAP: FULLY EDITABLE SITE ZONES ---
@@ -1066,15 +1108,15 @@
             renderSatelliteZones();
         }
         function onSatelliteZonesDeleted(e) {
+            const removedIds = new Set();
             e.layers.eachLayer(layer => {
-                if (layer.zoneId) {
-                    const removed = satelliteZones.find(z => z.id === layer.zoneId);
-                    if (removed && removed.linkGroupId) zones.forEach(peer => { if (peer.linkGroupId === removed.linkGroupId) delete peer.linkGroupId; });
-                    satelliteZones = satelliteZones.filter(z => z.id !== layer.zoneId);
-                    workers.forEach(w => { if (w.zoneId === layer.zoneId) w.zoneId = null; });
-                }
+                if (layer.zoneId) deleteZoneWithLinkedPeer('satellite', layer.zoneId).forEach(id => removedIds.add(id));
             });
             saveToDatabase();
+            if (removedIds.size) {
+                const status = document.getElementById('zoneLinkStatus');
+                if (status) status.textContent = removedIds.size + ' linked zone record(s) removed from both views.';
+            }
         }
         // Badge anchors are independent from zone geometry. Users can drag each
         // operational badge to the exact equipment point they want to represent.
@@ -1412,8 +1454,19 @@
         function updateWorkerZone(workerIndex, newZoneId) { workers[workerIndex].zoneId = newZoneId; saveToDatabase(); }
         
         function clearData() { 
-            if(confirm('WARNING: Delete all machines, settings, and worker data?')) { 
-                workers = []; zones = []; saveToDatabase(); 
+            if(confirm('WARNING: Delete ALL engineering zones, satellite zones, links, routes, machines and worker assignments? This cannot be undone.')) { 
+                workers = [];
+                zones = [];
+                satelliteZones = [];
+                connectionRoutes = [];
+                persistPlantData();
+                renderDashboard();
+                renderConnectionRoutes();
+                refreshTransferZoneOptions();
+                refreshZoneLinkOptions();
+                if (satelliteMap) renderSatelliteZones();
+                const status = document.getElementById('zoneLinkStatus');
+                if (status) status.textContent = 'Factory reset complete. Both maps are cleared.';
             } 
         }
         

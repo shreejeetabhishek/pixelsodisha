@@ -1,16 +1,28 @@
-# Plant Tracker – Mobile Badge Positioning Fix v5
+# Plant Tracker – Bidirectional Zone Deletion Sync (v6)
 
-## What changed
-- Fixed the Leaflet zero-size `DivIcon` positioning: the badge card is explicitly centred on its geographic anchor (`left:0; top:0; translate(-50%,-50%)`).
-- Mobile badge cards now use a narrower responsive width and compact typography so their visual centre remains on the zone anchor.
-- Old saved badge offsets from earlier versions are treated as legacy and ignored. By default, polygon/rectangle badges are recalculated from the zone's polygon centroid; marker/polyline badges use their geometry centre.
-- A manually dragged badge is saved with an explicit `badgeAnchorMode: "manual"` flag and remains at that chosen map coordinate.
-- The same rules apply in Engineering and Satellite views. Zooming and panning do not change the geographic anchor.
+## Included
+- `index.html` – updated application
+- `F_D1.jpg` – engineering drawing asset
+
+## Fix
+Deleting a zone in either map now deletes its linked counterpart in the other map.
+
+- Engineering zone deletion removes its transferred satellite copy (`transferredFrom`) and/or a manually linked satellite peer (`linkGroupId`).
+- Satellite zone deletion removes its linked engineering peer and any satellite copies derived from the same engineering zone.
+- Worker assignments pointing to deleted zones are cleared.
+- Unlinked, independently created satellite-only zones are preserved when an engineering zone is deleted.
+- Factory Reset now clears engineering zones, satellite zones, workers, and connection routes from both views.
+- Both map layers, dropdowns, dashboard and localStorage are refreshed after deletion.
 
 ## Deploy
-1. Replace `index.html` and `F_D1.jpg` in the GitHub Pages repository.
-2. Keep both files in the same directory.
-3. Hard-refresh the page on the phone after deployment. Existing zone geometry, workers and four-point map registration are preserved in browser storage.
+Replace `index.html` and `F_D1.jpg` in the GitHub Pages repository. Keep both files in the same directory. Do not clear browser site data.
 
-## Note
-This corrects responsive marker anchoring and defaults badge placement to zone geometry. For irregular or multi-part polygons, inspect the calculated centroid and manually reposition only if the equipment itself is not at the geometric centre. Manual positions are saved independently of zone boundaries.
+## Test
+1. Ensure an engineering zone has a transferred or linked satellite counterpart.
+2. Delete the engineering zone using the map's delete tool.
+3. Switch to Satellite View: the corresponding linked/transferred zone and its badge should be gone.
+4. Repeat by deleting from Satellite View and verify its linked engineering zone is also removed.
+5. Create an independent satellite-only zone, delete an unrelated engineering zone, and verify the independent satellite zone remains.
+6. Use Factory Reset only if you intend to clear all zone data on both maps.
+
+Data is stored in browser LocalStorage; it does not synchronize across different devices or browsers.
