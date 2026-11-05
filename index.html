@@ -3,51 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plant Flow Tracker - Vectorized Pro</title>
+    <title>Plant Flow Tracker - Professional UI</title>
     
     <!-- Leaflet CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
-    <!-- Leaflet Draw CSS & JS for Vector Drawing -->
+    <!-- Leaflet Draw CSS & JS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
     <style>
-        body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; overflow: hidden; transition: all 0.3s ease; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; overflow: hidden; background: #1e1e1e; }
         
         /* Layouts */
-        #sidebar { width: 320px; background: #f8f9fa; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; box-sizing: border-box; transition: all 0.3s ease; }
+        #sidebar { width: 340px; background: #ffffff; border-right: 1px solid #ddd; padding: 20px; overflow-y: auto; box-sizing: border-box; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
         #map-container { flex-grow: 1; position: relative; height: 100vh; display: flex; flex-direction: column; }
-        #map { flex-grow: 1; background-color: #e5e5e5; width: 100%; height: 100%; }
+        #map { flex-grow: 1; background-color: #f4f6f8; width: 100%; height: 100%; }
         
-        /* Full Screen Button */
-        .fullscreen-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: #333; color: #fff; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        .fullscreen-btn:hover { background: #555; }
+        /* Typography & Controls */
+        h2 { font-size: 16px; margin-top: 0; color: #333; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #0056b3; padding-bottom: 8px; }
+        .control-group { margin-bottom: 25px; }
+        input, select, button.action-btn { width: 100%; padding: 10px; margin-top: 8px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        input:focus, select:focus { outline: none; border-color: #0056b3; box-shadow: 0 0 0 2px rgba(0,86,179,0.1); }
         
-        /* Sidebar Elements */
-        h2 { font-size: 18px; margin-top: 0; }
-        .control-group { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #ccc; }
-        input, select, button.action-btn { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
-        button.action-btn { background: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; border-radius: 4px; }
-        button.action-btn:hover { background: #004494; }
-        button.danger-btn { background: #dc3545; }
+        button.action-btn { background: #0056b3; color: white; border: none; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        button.action-btn:hover { background: #004494; transform: translateY(-1px); }
+        button.danger-btn { background: #dc3545; margin-top: 15px; }
         button.danger-btn:hover { background: #c82333; }
         
-        .worker-card { background: white; padding: 10px; margin-bottom: 10px; border: 1px solid #eee; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .worker-name { font-weight: bold; font-size: 14px; }
+        .worker-card { background: #f8f9fa; padding: 12px; margin-bottom: 10px; border: 1px solid #e9ecef; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .worker-name { font-weight: 600; font-size: 14px; color: #212529; }
         
-        .manpower-badge { background: #d32f2f; color: white; font-weight: bold; padding: 5px 10px; border-radius: 12px; text-align: center; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 12px; white-space: nowrap; line-height: 1.2; }
-        .optimal { background: #2e7d32; }
+        /* 
+         * PROFESSIONAL MAP BADGES 
+         * Using translate(-50%, -50%) for perfect mathematical centering regardless of content size
+         */
+        .transparent-icon { overflow: visible !important; }
+        
+        .manpower-badge { 
+            position: absolute;
+            transform: translate(-50%, -50%);
+            background: rgba(220, 53, 69, 0.85); /* Semi-transparent Red */
+            backdrop-filter: blur(4px); /* Professional glass effect */
+            -webkit-backdrop-filter: blur(4px);
+            color: white; 
+            padding: 6px 12px; 
+            border-radius: 8px; 
+            text-align: center; 
+            border: 1px solid rgba(255,255,255,0.4); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+            white-space: nowrap; 
+            transition: all 0.3s ease;
+            pointer-events: none; /* Let clicks pass through to the polygon */
+        }
+        
+        .manpower-badge.optimal { 
+            background: rgba(40, 167, 69, 0.85); /* Semi-transparent Green */
+            border-color: rgba(255,255,255,0.5);
+        }
 
-        /* Responsive Mobile Layout */
+        .badge-count { font-weight: 800; font-size: 13px; letter-spacing: 0.5px; }
+        .badge-zone { font-size: 11px; font-weight: 500; opacity: 0.9; margin-top: 2px; }
+        
+        /* Dynamic Zoom Details (Hidden by default, shown when map is zoomed in) */
+        .zoom-reveal { display: none; font-size: 10px; opacity: 0.8; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 4px; }
+        .map-zoomed-in .zoom-reveal { display: block; }
+        .map-zoomed-in .manpower-badge { padding: 10px 16px; transform: translate(-50%, -50%) scale(1.1); }
+
+        /* Full Screen Button */
+        .fullscreen-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: #ffffff; color: #333; border: 1px solid #ccc; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,0.1); transition: all 0.2s; }
+        .fullscreen-btn:hover { background: #f8f9fa; color: #0056b3; }
+
+        /* Mobile Layout */
         @media (max-width: 768px) {
             body:not(.fullscreen-mode) { flex-direction: column; }
             body:not(.fullscreen-mode) #map-container { height: 55vh; flex-grow: 0; }
             body:not(.fullscreen-mode) #sidebar { height: 45vh; width: 100%; border-right: none; border-top: 2px solid #ddd; }
         }
-
-        /* Fullscreen Mode Classes */
         body.fullscreen-mode #sidebar { display: none !important; }
         body.fullscreen-mode #map-container { height: 100vh; width: 100vw; }
     </style>
@@ -57,17 +90,17 @@
         <h2>Add Manpower</h2>
         <div class="control-group">
             <input type="text" id="workerName" placeholder="Worker Name (e.g. Ramesh)">
-            <select id="zoneSelect">
-                <!-- Populated dynamically -->
-            </select>
+            <select id="zoneSelect"></select>
             <button class="action-btn" onclick="addWorker()">Assign Worker</button>
         </div>
         
         <h2>Active Workforce</h2>
         <div id="workerList"></div>
-        <br>
+        
         <button class="action-btn danger-btn" onclick="clearData()">Reset Database</button>
-        <p style="font-size: 11px; color: #666; margin-top: 15px;">Use the drawing tools on the map to create new vectorized zones or points.</p>
+        <p style="font-size: 12px; color: #666; margin-top: 15px; line-height: 1.5;">
+            <strong>Pro Tip:</strong> Use the polygon tool to draw zones. Use the Polyline tool (line icon) to draw 90-degree connection routes between machines.
+        </p>
     </div>
 
     <div id="map-container">
@@ -76,67 +109,71 @@
     </div>
     
     <script>
-        // --- 1. FULLSCREEN TOGGLE LOGIC ---
         function toggleFullscreen() {
             document.body.classList.toggle('fullscreen-mode');
-            // Force Leaflet to recalculate map size after layout shift
             setTimeout(() => { map.invalidateSize(); }, 300);
         }
 
-        // --- 2. DATABASE & STATE (LocalStorage) ---
-        let zones = JSON.parse(localStorage.getItem('plant_zones'));
-        // If no zones exist, load a sample array
-        if (!zones || zones.length === 0) {
-            zones = [
-                { id: 'z1', name: 'Sample Zone', type: 'rectangle', latlngs: [[ [300, 300], [300, 700], [600, 700], [600, 300] ]] }
-            ];
-        }
-        
-        let workers = JSON.parse(localStorage.getItem('plant_workers')) || [];
+        // --- DATABASE SETUP ---
+        let zones = JSON.parse(localStorage.getItem('plant_zones_v2')) || [];
+        let workers = JSON.parse(localStorage.getItem('plant_workers_v2')) || [];
         
         function saveToDatabase() { 
-            localStorage.setItem('plant_zones', JSON.stringify(zones));
-            localStorage.setItem('plant_workers', JSON.stringify(workers)); 
+            localStorage.setItem('plant_zones_v2', JSON.stringify(zones));
+            localStorage.setItem('plant_workers_v2', JSON.stringify(workers)); 
             renderDashboard(); 
         }
 
-        // --- 3. MAP INITIALIZATION ---
-        const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 3 });
-        
-        // ** UPDATED: Image dimensions and filename F_D1.jpg **
-        const imgWidth = 2000; // Adjust if your image is wider
-        const imgHeight = 1500; // Adjust if your image is taller
+        // --- MAP INITIALIZATION ---
+        const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 4 });
+        const imgWidth = 2000; 
+        const imgHeight = 1500; 
         const bounds = [[0, 0], [imgHeight, imgWidth]];
         
-        const placeholderImg = 'F_D1.jpg'; // Pointing to user's exact filename
-        L.imageOverlay(placeholderImg, bounds).addTo(map);
+        L.imageOverlay('F_D1.jpg', bounds).addTo(map);
         map.fitBounds(bounds);
 
-        // --- 4. VECTOR DRAWING TOOLS SETUP ---
+        // --- ZOOM LISTENER (For dynamic detail revealing) ---
+        map.on('zoomend', function() {
+            if (map.getZoom() >= 1) {
+                document.getElementById('map').classList.add('map-zoomed-in');
+            } else {
+                document.getElementById('map').classList.remove('map-zoomed-in');
+            }
+        });
+
+        // --- DRAWING TOOLS (Polygons, Pins, & Connection Lines) ---
         var drawnItems = new L.FeatureGroup();
         map.addLayer(drawnItems);
         
         var drawControl = new L.Control.Draw({
             draw: {
-                polyline: false, // Not needed for zones
-                circle: false,   // Leaflet simple CRS sometimes struggles with circles
+                circle: false,
                 circlemarker: false,
-                marker: true,    // For pinpoint locations
-                polygon: true,   // For vectorized irregular zones
-                rectangle: true  // For vectorized box zones
+                marker: true,
+                polygon: { shapeOptions: { color: '#0056b3', weight: 2, fillOpacity: 0.1 } },
+                rectangle: { shapeOptions: { color: '#0056b3', weight: 2, fillOpacity: 0.1 } },
+                // Enable Polyline for Connection Routes
+                polyline: { 
+                    shapeOptions: { 
+                        color: '#ff8c00', // Professional Orange
+                        weight: 3, 
+                        dashArray: '5, 8', // Dashed blueprint style
+                        opacity: 0.8
+                    },
+                    icon: new L.DivIcon({ iconSize: new L.Point(8, 8), className: 'leaflet-div-icon leaflet-editing-icon' })
+                }
             },
-            edit: {
-                featureGroup: drawnItems
-            }
+            edit: { featureGroup: drawnItems }
         });
         map.addControl(drawControl);
 
-        // Handle newly drawn vectors
         map.on(L.Draw.Event.CREATED, function (e) {
             var type = e.layerType, layer = e.layer;
             
-            var zoneName = prompt("Enter a name for this new Zone/Location:");
-            if (!zoneName) return; // Cancel if no name
+            var promptText = type === 'polyline' ? "Name this connection route:" : "Enter a name for this Zone/Location:";
+            var zoneName = prompt(promptText);
+            if (!zoneName) return; 
 
             let newZone = { id: 'z_' + Date.now(), name: zoneName, type: type };
 
@@ -150,21 +187,18 @@
             saveToDatabase();
         });
 
-        // Handle deleted vectors
         map.on(L.Draw.Event.DELETED, function (e) {
             e.layers.eachLayer(function (layer) {
                 if (layer.zoneId) {
-                    // Remove from zones array
                     zones = zones.filter(z => z.id !== layer.zoneId);
-                    // Unassign workers in that zone
                     workers.forEach(w => { if(w.zoneId === layer.zoneId) w.zoneId = null; });
                 }
             });
             saveToDatabase();
         });
 
-        // --- 5. RENDER LOGIC ---
-        let badgeMarkers = {}; // Store manpower badges
+        // --- RENDER LOGIC ---
+        let badgeMarkers = {}; 
 
         function renderDashboard() { 
             renderSidebar(); 
@@ -172,12 +206,10 @@
         }
         
         function renderMapMarkers() {
-            // Clear existing layers
             drawnItems.clearLayers();
             Object.values(badgeMarkers).forEach(m => map.removeLayer(m));
             badgeMarkers = {};
             
-            // Calculate headcount
             const headcounts = {};
             zones.forEach(z => headcounts[z.id] = 0);
             workers.forEach(w => { if(w.zoneId && headcounts[w.zoneId] !== undefined) headcounts[w.zoneId]++; });
@@ -186,54 +218,65 @@
                 let centerPoint;
                 let shapeLayer;
 
-                // Draw the vector shapes
                 if (zone.type === 'marker') {
                     centerPoint = [zone.latlng.lat, zone.latlng.lng];
-                    shapeLayer = L.circleMarker(centerPoint, { radius: 8, color: '#3388ff', fillOpacity: 0.5 });
+                    shapeLayer = L.circleMarker(centerPoint, { radius: 6, color: '#0056b3', fillOpacity: 0.8 });
+                } else if (zone.type === 'polyline') {
+                    // Draw the connection line
+                    shapeLayer = L.polyline(zone.latlngs, {color: '#ff8c00', weight: 3, dashArray: '5, 8', opacity: 0.8});
+                    // For polylines, put the badge in the middle of the line
+                    centerPoint = shapeLayer.getBounds().getCenter(); 
                 } else if (zone.type === 'polygon' || zone.type === 'rectangle') {
-                    shapeLayer = L.polygon(zone.latlngs, {color: '#3388ff', weight: 2, fillOpacity: 0.15});
+                    shapeLayer = L.polygon(zone.latlngs, {color: '#0056b3', weight: 2, fillOpacity: 0.1});
                     centerPoint = shapeLayer.getBounds().getCenter();
                 }
 
-                // Add to feature group so they can be edited/deleted
                 if(shapeLayer) {
-                    shapeLayer.zoneId = zone.id; // Tag for deletion logic
+                    shapeLayer.zoneId = zone.id;
                     drawnItems.addLayer(shapeLayer);
                 }
                 
-                // Draw the Manpower Badge over the center of the zone
+                // Only draw a badge if it's a zone/marker OR if a polyline has workers assigned
                 const count = headcounts[zone.id];
-                const statusClass = count > 0 ? 'optimal' : '';
-                const badgeIcon = L.divIcon({
-                    className: 'custom-div-icon',
-                    html: `<div class="manpower-badge ${statusClass}">${count} Workers<br><small>${zone.name}</small></div>`,
-                    iconSize: [120, 45],
-                    iconAnchor: [60, 22]
-                });
-                
-                if (centerPoint) {
-                    badgeMarkers[zone.id] = L.marker(centerPoint, { icon: badgeIcon, interactive: false }).addTo(map);
+                if (zone.type !== 'polyline' || count > 0) {
+                    const statusClass = count > 0 ? 'optimal' : '';
+                    
+                    // The CSS handles perfect centering via translate(-50%, -50%)
+                    const badgeIcon = L.divIcon({
+                        className: 'transparent-icon', 
+                        iconSize: [0, 0], 
+                        iconAnchor: [0, 0], 
+                        html: `
+                            <div class="manpower-badge ${statusClass}">
+                                <div class="badge-count">${count} Workers</div>
+                                <div class="badge-zone">${zone.name}</div>
+                                <div class="zoom-reveal">Zone ID: ${zone.id.substring(2, 6)}<br>Status: ${count > 0 ? 'Active' : 'Standby'}</div>
+                            </div>`
+                    });
+                    
+                    if (centerPoint) {
+                        badgeMarkers[zone.id] = L.marker(centerPoint, { icon: badgeIcon, interactive: false }).addTo(map);
+                    }
                 }
             });
         }
         
         function renderSidebar() {
-            // Update dropdown list
             const addZoneSelect = document.getElementById('zoneSelect');
-            addZoneSelect.innerHTML = '<option value="">-- Select Zone --</option>';
+            addZoneSelect.innerHTML = '<option value="">-- Select Zone/Location --</option>';
             zones.forEach(z => {
                 let opt = document.createElement('option');
                 opt.value = z.id;
-                opt.innerHTML = z.name;
+                // Add a small indicator if it's a connection route vs a zone
+                opt.innerHTML = (z.type === 'polyline' ? '🔗 ' : '📍 ') + z.name;
                 addZoneSelect.appendChild(opt);
             });
 
-            // Update Worker List
             const listDiv = document.getElementById('workerList');
             listDiv.innerHTML = '';
             
             if(workers.length === 0) {
-                listDiv.innerHTML = '<p style="color:#666; font-size:14px;">No workers assigned.</p>';
+                listDiv.innerHTML = '<p style="color:#888; font-size:13px; font-style:italic;">No workers assigned.</p>';
             }
             
             workers.forEach((worker, index) => {
@@ -247,12 +290,12 @@
             });
         }
         
-        // --- 6. ACTION FUNCTIONS ---
+        // --- ACTIONS ---
         function addWorker() {
             const nameInput = document.getElementById('workerName');
             const zoneSelect = document.getElementById('zoneSelect');
             if (nameInput.value.trim() === '') return alert('Enter a worker name');
-            if (zoneSelect.value === '') return alert('Please create or select a zone first.');
+            if (zoneSelect.value === '') return alert('Please select a zone or connection route.');
             
             workers.push({ id: Date.now(), name: nameInput.value.trim(), zoneId: zoneSelect.value });
             nameInput.value = '';
@@ -272,7 +315,6 @@
             } 
         }
         
-        // Initial render
         renderDashboard();
     </script>
 </body>
