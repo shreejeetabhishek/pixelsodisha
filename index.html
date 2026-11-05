@@ -218,7 +218,7 @@
         <div id="satelliteAttributionNote" class="satellite-attribution-note" style="display:none">Satellite imagery © Esri and its data providers</div>
         <div id="connectionPanel" class="connection-panel">
             <strong>Flexible connecting lines</strong>
-            <p>Routes are stored independently for each map. Select Draw, tap multiple points to create bends, then finish. Use Edit vertices to reshape saved routes.</p>
+            <p>Satellite now has its own editable site zones, equipment markers, polygons, rectangles and polylines. Use the map drawing toolbar to add, edit or delete them. Connections remain independently editable on each map.</p>
             <div class="connection-actions">
                 <button class="primary" id="drawConnectionBtn" onclick="startConnectionDrawing()">＋ Draw route</button>
                 <button id="finishConnectionBtn" onclick="finishConnectionDrawing()" disabled>Finish route</button>
@@ -243,6 +243,10 @@
         let satelliteConnectionLayer = null;
         let engineeringEditControl = null;
         let satelliteEditControl = null;
+        let satelliteZones = JSON.parse(localStorage.getItem('plant_satellite_zones_v1') || '[]');
+        let satelliteDrawnItems = null;
+        let satelliteZoneBadgeMarkers = {};
+        let satelliteDrawControl = null;
 
         function toggleSidebar() {
             document.body.classList.toggle('sidebar-closed');
@@ -256,8 +260,8 @@
                 maxZoom: 19,
                 attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
             }).addTo(satelliteMap);
-            renderConnectionRoutes();
             satelliteConnectionLayer = new L.FeatureGroup().addTo(satelliteMap);
+            satelliteDrawnItems = new L.FeatureGroup().addTo(satelliteMap);
             renderConnectionRoutes();
             satelliteMap.on('click', function (event) {
                 if (connectionDrawing && currentMapView === 'satellite') { addConnectionPoint(event.latlng); return; }
@@ -265,8 +269,16 @@
             });
             satelliteEditControl = new L.Control.Draw({ draw:false, edit:{ featureGroup:satelliteConnectionLayer, remove:false } });
             satelliteMap.addControl(satelliteEditControl);
+            satelliteDrawControl = new L.Control.Draw({
+                position:'topleft',
+                draw:{ polygon:{shapeOptions:{color:'#4da8da',weight:2,fillOpacity:.2}}, rectangle:{shapeOptions:{color:'#4da8da',weight:2,fillOpacity:.2}}, polyline:{shapeOptions:{color:'#00ff00',weight:4,dashArray:'10,14'}}, marker:true, circle:false, circlemarker:false },
+                edit:{ featureGroup:satelliteDrawnItems, remove:true }
+            });
+            satelliteMap.addControl(satelliteDrawControl);
+            satelliteMap.on(L.Draw.Event.CREATED, onSatelliteZoneCreated);
+            satelliteMap.on(L.Draw.Event.EDITED, onSatelliteZonesEdited);
+            satelliteMap.on(L.Draw.Event.DELETED, onSatelliteZonesDeleted);
             satelliteMap.on(L.Draw.Event.EDITED, persistEditedConnections);
-            satelliteMap.on(L.Draw.Event.EDITMOVE, function(){});
             if (plantSite && Number.isFinite(plantSite.lat) && Number.isFinite(plantSite.lng)) {
                 document.getElementById('plantLatitude').value = plantSite.lat;
                 document.getElementById('plantLongitude').value = plantSite.lng;
@@ -407,8 +419,10 @@
         
         function saveToDatabase() { 
             localStorage.setItem('plant_zones_v4', JSON.stringify(zones));
-            localStorage.setItem('plant_workers_v4', JSON.stringify(workers)); 
-            renderDashboard(); 
+            localStorage.setItem('plant_workers_v4', JSON.stringify(workers));
+            localStorage.setItem('plant_satellite_zones_v1', JSON.stringify(satelliteZones));
+            renderDashboard();
+            if (satelliteMap) renderSatelliteZones(); 
         }
 
         // --- MAP INITIALIZATION ---
@@ -483,10 +497,76 @@
             saveToDatabase();
         });
 
+        // --- SATELLITE MAP: FULLY EDITABLE SITE ZONES ---
+        function onSatelliteZoneCreated(e) {
+            const name = prompt('Name this site area / equipment / route:');
+            if (!name) return;
+            const layer = e.layer, type = e.layerType;
+            const item = { id:'sz_' + Date.now(), name:name.trim(), type, status:'running', symbol:'', mapType:'satellite' };
+            if (type === 'marker') item.latlng = layer.getLatLng();
+            else item.latlngs = layer.getLatLngs();
+            satelliteZones.push(item);
+            saveToDatabase();
+        }
+        function onSatelliteZonesEdited(e) {
+            e.layers.eachLayer(layer => {
+                const z = satelliteZones.find(x => x.id === layer.zoneId);
+                if (!z) return;
+                if (z.type === 'marker') z.latlng = layer.getLatLng();
+                else z.latlngs = layer.getLatLngs();
+            });
+            saveToDatabase();
+        }
+        function onSatelliteZonesDeleted(e) {
+            e.layers.eachLayer(layer => {
+                if (layer.zoneId) {
+                    satelliteZones = satelliteZones.filter(z => z.id !== layer.zoneId);
+                    workers.forEach(w => { if (w.zoneId === layer.zoneId) w.zoneId = null; });
+                }
+            });
+            saveToDatabase();
+        }
+        function renderSatelliteZones() {
+            if (!satelliteMap || !satelliteDrawnItems) return;
+            satelliteDrawnItems.clearLayers();
+            Object.values(satelliteZoneBadgeMarkers).forEach(m => satelliteMap.removeLayer(m));
+            satelliteZoneBadgeMarkers = {};
+            const assigned = {};
+            satelliteZones.forEach(z => assigned[z.id] = []);
+            workers.forEach(w => { if (w.zoneId && assigned[w.zoneId]) assigned[w.zoneId].push(w); });
+            satelliteZones.forEach(z => {
+                const status = z.status || 'running';
+                const color = status === 'running' ? '#00d66b' : status === 'maintenance' ? '#ffaa00' : '#ff3030';
+                let shape, center;
+                if (z.type === 'marker') {
+                    center = z.latlng;
+                    shape = L.circleMarker(center, {radius:9,color,weight:3,fillColor:color,fillOpacity:.45});
+                } else if (z.type === 'polyline') {
+                    shape = L.polyline(z.latlngs, {color,weight:5,dashArray:'10,8',opacity:.95});
+                    center = shape.getBounds().getCenter();
+                } else {
+                    shape = L.polygon(z.latlngs, {color,weight:3,fillColor:color,fillOpacity:.18});
+                    center = shape.getBounds().getCenter();
+                }
+                shape.zoneId = z.id;
+                shape.bindTooltip((z.symbol ? z.symbol + ' ' : '') + z.name, {sticky:true});
+                satelliteDrawnItems.addLayer(shape);
+                if (z.type !== 'polyline' || (assigned[z.id] || []).length) {
+                    const people = assigned[z.id] || [];
+                    const workersHtml = people.length ? '<div class="badge-workers">' + people.map(w => `<div class="worker-item"><span>${escapeHtml(w.name)}</span><span>${escapeHtml(w.role)}</span></div>`).join('') + '</div>' : '';
+                    const html = `<div class="manpower-badge"><div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${z.symbol || ''}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div><div class="badge-count">${people.length} Personnel</div>${workersHtml}</div>`;
+                    const icon = L.divIcon({className:'transparent-icon',iconSize:[0,0],iconAnchor:[0,0],html});
+                    satelliteZoneBadgeMarkers[z.id] = L.marker(center,{icon,interactive:false}).addTo(satelliteMap);
+                }
+            });
+        }
+        function escapeHtml(value) { return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+        function findZoneById(id) { return zones.find(z => z.id === id) || satelliteZones.find(z => z.id === id); }
+
         // --- STATUS & SETTINGS LOGIC ---
         function loadZoneSettings() {
             const zId = document.getElementById('settingZoneSelect').value;
-            const z = zones.find(x => x.id === zId);
+            const z = findZoneById(zId);
             if(z) { 
                 document.getElementById('zoneStatusSelect').value = z.status || 'running';
                 document.getElementById('zoneSymbolSelect').value = z.symbol || '';
@@ -500,7 +580,7 @@
             
             if(!zId) return alert('Select a zone first.');
             
-            const z = zones.find(x => x.id === zId);
+            const z = findZoneById(zId);
             if(z) { 
                 z.status = newStatus; 
                 z.symbol = newSymbol;
@@ -514,7 +594,8 @@
         function renderDashboard() { 
             updateDropdowns();
             renderWorkerList(); 
-            renderMapMarkers(); 
+            renderMapMarkers();
+            if (satelliteMap) renderSatelliteZones();
         }
         
         function renderMapMarkers() {
@@ -597,12 +678,12 @@
             setSelect.innerHTML = '<option value="">-- Select Machine/Zone --</option>';
             assignSelect.innerHTML = '<option value="">-- Select Location --</option>';
             
-            zones.forEach(z => {
+            [...zones.map(z => ({...z, _map:'Engineering'})), ...satelliteZones.map(z => ({...z, _map:'Satellite'}))].forEach(z => {
                 // Use the custom symbol in the dropdown if available, otherwise default to line/pin
                 let displayIcon = z.symbol ? z.symbol + ' ' : (z.type === 'polyline' ? '🔗 ' : '📍 ');
                 
-                let opt1 = document.createElement('option'); opt1.value = z.id; opt1.innerHTML = displayIcon + z.name;
-                let opt2 = document.createElement('option'); opt2.value = z.id; opt2.innerHTML = displayIcon + z.name;
+                let opt1 = document.createElement('option'); opt1.value = z.id; opt1.textContent = displayIcon + z._map + ' · ' + z.name;
+                let opt2 = document.createElement('option'); opt2.value = z.id; opt2.textContent = displayIcon + z._map + ' · ' + z.name;
                 
                 setSelect.appendChild(opt1);
                 assignSelect.appendChild(opt2);
@@ -619,7 +700,7 @@
             
             workers.forEach((worker, index) => {
                 let optionsHtml = '<option value="">-- Reassign --</option>';
-                optionsHtml += zones.map(z => {
+                optionsHtml += [...zones, ...satelliteZones].map(z => {
                     let displayIcon = z.symbol ? z.symbol + ' ' : '';
                     return `<option value="${z.id}" ${worker.zoneId === z.id ? 'selected' : ''}>${displayIcon}${z.name}</option>`
                 }).join('');
