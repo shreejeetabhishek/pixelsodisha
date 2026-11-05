@@ -63,10 +63,15 @@
             background: rgba(20, 20, 35, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             color: white; padding: 12px 18px; border-radius: 8px; text-align: center; 
             border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.5); 
-            white-space: nowrap; pointer-events: none; min-width: 130px;
+            white-space: nowrap; pointer-events: auto; min-width: 130px;
             transition: all 0.3s ease;
         }
         
+
+        .manpower-badge { cursor: grab; touch-action: none; user-select: none; -webkit-user-select:none; }
+        .manpower-badge:active { cursor: grabbing; }
+        .badge-drag-note { display:block; margin-top:4px; font-size:9px; color:#8fcfff; opacity:.85; letter-spacing:.04em; }
+
         .badge-header { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
         
         /* New styling for the industrial symbol */
@@ -1053,6 +1058,63 @@
             });
             saveToDatabase();
         }
+        // Badge anchors are independent from zone geometry. Users can drag each
+        // operational badge to the exact equipment point they want to represent.
+        // Engineering anchors are stored in CRS.Simple drawing coordinates as {lat,lng};
+        // satellite anchors are geographic coordinates in the same object shape.
+        function validBadgeAnchor(anchor) {
+            return !!anchor && Number.isFinite(Number(anchor.lat)) && Number.isFinite(Number(anchor.lng));
+        }
+        function makeBadgeDraggable(marker, zone, mapInstance, storageKind) {
+            marker.options.draggable = true;
+            marker.dragging.enable();
+            marker.on('dragend', function () {
+                const p = marker.getLatLng();
+                zone.badgeAnchor = { lat:p.lat, lng:p.lng };
+                marker._badgeAnchor = L.latLng(p.lat,p.lng);
+                if (storageKind === 'engineering') {
+                    persistPlantData();
+                } else {
+                    localStorage.setItem('plant_satellite_zones_v1', JSON.stringify(satelliteZones));
+                }
+                const status = document.getElementById(storageKind === 'engineering' ? 'zoneLinkStatus' : 'transferStatus');
+                if (status) status.textContent = 'Badge position saved for ' + zone.name + '.';
+            });
+            marker.bindTooltip('Drag to reposition this zone badge', {direction:'top', opacity:.9});
+            return marker;
+        }
+
+        function polygonCentroidLatLngs(latlngs) {
+            // Leaflet CRS.Simple: x = lng, y = lat. Polygon area centroid,
+            // with bounds-centre fallback for degenerate/complex geometry.
+            const ring = Array.isArray(latlngs) && Array.isArray(latlngs[0]) ? latlngs[0] : latlngs;
+            if (!Array.isArray(ring) || ring.length < 3) return null;
+            let area2=0, cx=0, cy=0;
+            for (let i=0,j=ring.length-1; i<ring.length; j=i++) {
+                const a=ring[j], b=ring[i];
+                const ax=Number(a.lng ?? a[1]), ay=Number(a.lat ?? a[0]);
+                const bx=Number(b.lng ?? b[1]), by=Number(b.lat ?? b[0]);
+                const cross=ax*by-bx*ay;
+                area2+=cross; cx+=(ax+bx)*cross; cy+=(ay+by)*cross;
+            }
+            if (Math.abs(area2)<1e-9) return null;
+            return L.latLng(cy/(3*area2), cx/(3*area2));
+        }
+
+        function defaultEngineeringBadgeAnchor(zone, shapeLayer, fallback) {
+            if (validBadgeAnchor(zone.badgeAnchor)) return L.latLng(Number(zone.badgeAnchor.lat), Number(zone.badgeAnchor.lng));
+            if ((zone.type==='polygon' || zone.type==='rectangle') && zone.latlngs) {
+                const c=polygonCentroidLatLngs(zone.latlngs);
+                if (c) return c;
+            }
+            return fallback ? L.latLng(fallback) : shapeLayer.getBounds().getCenter();
+        }
+
+        function defaultSatelliteBadgeAnchor(zone, fallback) {
+            if (validBadgeAnchor(zone.badgeAnchor)) return L.latLng(Number(zone.badgeAnchor.lat), Number(zone.badgeAnchor.lng));
+            return fallback ? L.latLng(fallback) : null;
+        }
+
         function renderSatelliteZones() {
             if (!satelliteMap || !satelliteDrawnItems) return;
             satelliteDrawnItems.clearLayers();
@@ -1090,10 +1152,12 @@
                     const people = assigned[z.id] || [];
                     const workersHtml = people.length ? '<div class="badge-workers">' + people.map(w => `<div class="worker-item"><span>${escapeHtml(w.name)}</span><span>${escapeHtml(w.role)}</span></div>`).join('') + '</div>' : '';
                     const linkedTag = z.linkGroupId ? '<span class="linked-zone-tag">LINKED ZONE</span>' : '';
-                    const html = `<div class="manpower-badge"><div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${z.symbol || ''}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div><div class="badge-count">${people.length} Personnel</div>${linkedTag}${workersHtml}</div>`;
+                    const html = `<div class="manpower-badge"><div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${z.symbol || ''}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div><div class="badge-count">${people.length} Personnel</div>${linkedTag}${workersHtml}<span class="badge-drag-note">DRAG TO POSITION</span></div>`;
+                    const badgeAnchor=defaultSatelliteBadgeAnchor(z,center);
                     const icon = L.divIcon({className:'transparent-icon',iconSize:[0,0],iconAnchor:[0,0],html});
-                    const badgeMarker=L.marker(center,{icon,interactive:false}).addTo(satelliteMap);
-                    badgeMarker._badgeAnchor=center;
+                    const badgeMarker=L.marker(badgeAnchor,{icon,interactive:true,draggable:true,bubblingMouseEvents:false}).addTo(satelliteMap);
+                    badgeMarker._badgeAnchor=badgeAnchor;
+                    makeBadgeDraggable(badgeMarker,z,satelliteMap,'satellite');
                     satelliteZoneBadgeMarkers[z.id] = badgeMarker;
                 }
             });
@@ -1110,25 +1174,11 @@
             });
         }
         function layoutSatelliteBadges() {
-            if (!satelliteMap) return;
-            const size=satelliteMap.getSize(), occupied=[];
-            const candidates=[[0,-62],[0,62],[150,0],[-150,0],[150,-62],[-150,-62],[150,62],[-150,62],[0,-120],[0,120],[90,-100],[-90,-100],[90,100],[-90,100]];
-            Object.values(satelliteZoneBadgeMarkers).forEach(marker=>{
-                if (!marker._badgeAnchor) return;
-                const base=satelliteMap.latLngToLayerPoint(marker._badgeAnchor);
-                let chosen=null, chosenRect=null, bestScore=-Infinity;
-                candidates.forEach((offset,index)=>{
-                    const cx=base.x+offset[0], cy=base.y+offset[1];
-                    const r={l:cx-72,r:cx+72,t:cy-34,b:cy+34};
-                    const collision=occupied.some(o=>!(r.r<o.l || r.l>o.r || r.b<o.t || r.t>o.b));
-                    const margin=8;
-                    const inside=r.l>=margin && r.r<=size.x-margin && r.t>=margin && r.b<=size.y-margin;
-                    // Prefer positions that are both visible and non-overlapping.
-                    const score=(inside?1000:0)+(collision?-1000:0)-index;
-                    if(score>bestScore){bestScore=score;chosen=offset;chosenRect=r;}
-                });
-                if(chosenRect) occupied.push(chosenRect);
-                marker.setLatLng(satelliteMap.layerPointToLatLng(L.point(base.x+chosen[0],base.y+chosen[1])));
+            // Deliberately do not auto-offset badges. Their stored geographic
+            // anchor is the exact point selected by the user and must remain fixed
+            // through map pan/zoom. Leaflet itself keeps the marker in map space.
+            Object.values(satelliteZoneBadgeMarkers).forEach(marker => {
+                if (marker._badgeAnchor) marker.setLatLng(marker._badgeAnchor);
             });
         }
         function escapeHtml(value) { return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -1244,13 +1294,15 @@
                                     <div class="badge-zone">${zone.name}</div>
                                 </div>
                                 <div class="badge-count">${count} Personnel Active</div>
-                                ${workersHtml}
+                                ${workersHtml}<span class="badge-drag-note">DRAG TO POSITION</span>
                             </div>`
                     });
                     
                     if (centerPoint) {
-                        badgeMarkers[zone.id] = L.marker(centerPoint, { icon: badgeIcon, interactive: false }).addTo(map);
-                        badgeMarkers[zone.id]._badgeAnchor = L.latLng(centerPoint);
+                        const badgeAnchor=defaultEngineeringBadgeAnchor(zone,shapeLayer,centerPoint);
+                        badgeMarkers[zone.id] = L.marker(badgeAnchor, { icon: badgeIcon, interactive: true, draggable: true, bubblingMouseEvents:false }).addTo(map);
+                        badgeMarkers[zone.id]._badgeAnchor = L.latLng(badgeAnchor);
+                        makeBadgeDraggable(badgeMarkers[zone.id],zone,map,'engineering');
                     }
                 }
             });
@@ -1258,21 +1310,11 @@
         }
         
         function layoutEngineeringBadges() {
-            if (!map) return;
-            const occupied = [];
-            const candidates = [[0,-48],[0,48],[112,0],[-112,0],[112,-48],[-112,-48],[112,48],[-112,48],[0,-94],[0,94]];
+            // Badge markers are anchored to saved drawing coordinates. Never
+            // shift them to avoid collisions; let the user drag them to the
+            // intended equipment location inside each zone.
             Object.values(badgeMarkers).forEach(marker => {
-                if (!marker._badgeAnchor) return;
-                const base = map.latLngToLayerPoint(marker._badgeAnchor);
-                let chosen = candidates[0], rect = null;
-                for (const offset of candidates) {
-                    const cx=base.x+offset[0], cy=base.y+offset[1];
-                    const r={l:cx-66,r:cx+66,t:cy-22,b:cy+22};
-                    if (!occupied.some(o => !(r.r<o.l || r.l>o.r || r.b<o.t || r.t>o.b))) { chosen=offset; rect=r; break; }
-                }
-                if (!rect) { const cx=base.x+chosen[0],cy=base.y+chosen[1]; rect={l:cx-66,r:cx+66,t:cy-22,b:cy+22}; }
-                occupied.push(rect);
-                marker.setLatLng(map.layerPointToLatLng(L.point(base.x+chosen[0],base.y+chosen[1])));
+                if (marker._badgeAnchor) marker.setLatLng(marker._badgeAnchor);
             });
         }
 

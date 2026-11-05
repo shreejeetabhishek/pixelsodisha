@@ -1,32 +1,26 @@
-# Plant Tracker – Four-Point Map Registration Fix
+# Plant Tracker – Draggable Zone Badge Anchors (v4)
 
-## Files
-- `index.html` – updated app and four-point projective registration
-- `F_D1.jpg` – engineering drawing used by Engineering View
+## What's changed
+- Zone status/personnel badges are now draggable on both Engineering Drawing and Satellite View.
+- Dragging a badge stores its own anchor coordinate on the corresponding zone.
+- Badge anchors remain fixed in map coordinates while zooming and panning.
+- Removed automatic collision-offset positioning that previously moved badges away from the equipment/zone location.
+- New polygon badges default to a polygon area centroid; rectangles/lines/markers use a geometry-derived fallback.
+- Existing zone geometry, satellite registration and localStorage data are retained.
 
-## What changed
-- Replaced the three-point affine alignment with four-point projective (homography) registration.
-- Old three-point alignment data is not trusted; perform registration again.
-- Transfers every vertex of engineering polygons, rectangles, polylines and markers.
-- Re-transferring a zone updates its previous satellite copy instead of creating duplicates.
-- Clarifies that a data link shares operational data but does not geographically align shapes.
-- After transfer, opens Satellite View at the transferred geometry.
-
-## Correct registration workflow
-1. Open **Transfer zones**.
-2. Tap **Register maps (4 points)**.
-3. On Engineering Drawing, tap a permanent landmark identifiable in satellite imagery.
-4. Switch to Satellite View and tap the exact same physical point.
-5. Repeat for four landmarks. Spread points around the plant footprint, roughly near its corners. Do not use four nearby or collinear points.
-6. Select an engineering zone and tap **Transfer selected zone**.
-7. Inspect the transferred outline at close zoom. If offset, repeat with more accurately identified landmarks.
+## How to position badges
+1. Open Engineering Drawing.
+2. Touch and hold a zone badge, then drag it to the desired equipment location (for example, the X-marked points in your screenshot).
+3. Release. The badge position is saved automatically.
+4. Repeat for each zone.
+5. Switch to Satellite View and independently position a satellite badge if required. Its position is saved separately in geographic coordinates.
 
 ## Important
-- Engineering and satellite points must be paired in the same order and represent exactly the same physical locations.
-- Independently drawn satellite zones are not moved by registration. Use **Transfer selected zone** to create/update satellite geometry from the engineering zone.
-- A blue/green/red linked label alone indicates shared data identity, not geographic alignment.
-- This app stores data in browser LocalStorage and does not synchronize across devices.
-- Validate all geometry against known site features before operational or safety-critical use.
+- Badge position is an independent display anchor. Moving a badge does not move or resize the zone boundary.
+- Engineering and satellite badge positions are stored in their respective coordinate systems. If you transfer zone geometry, position the satellite badge after transfer if the desired equipment point differs.
+- This update intentionally disables automatic badge collision shifting. If two badges overlap, drag one to a clear position.
+- Data remains in browser LocalStorage; it is not synced across devices.
+- Validate all zones and geographic alignment against known site features before operational use.
 
 ## Deploy
-Replace `index.html` and `F_D1.jpg` in the GitHub Pages repository. Keep them in the same folder. Preserve browser site data to retain existing zones and personnel.
+Replace `index.html` and `F_D1.jpg` in your GitHub Pages repository. Keep them in the same directory. Do not clear browser site data.
