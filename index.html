@@ -28,7 +28,7 @@
         #map, #satellite-map { flex-grow: 1; background-color: #0a0a10; width: 100%; height: 100%; }
         #satellite-map { display: none; }
         .map-mode-btn.active { background: #4da8da; color: #08131d; }
-        .satellite-panel { position: absolute; top: 72px; right: 15px; z-index: 1100; width: min(310px, calc(100vw - 30px)); background: rgba(20,20,35,.96); border: 1px solid #4da8da; border-radius: 9px; padding: 13px; box-shadow: 0 5px 18px rgba(0,0,0,.45); display: none; }
+        .satellite-panel { position: absolute; top: 112px; right: 15px; z-index: 1100; width: min(310px, calc(100vw - 30px)); background: rgba(20,20,35,.96); border: 1px solid #4da8da; border-radius: 9px; padding: 13px; box-shadow: 0 5px 18px rgba(0,0,0,.45); display: none; }
         .satellite-panel.visible { display: block; }
         .satellite-panel p { margin: 4px 0 9px; color: #b9c5d4; font-size: 12px; line-height: 1.45; }
         .coordinate-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -118,7 +118,7 @@
         .ui-btn:hover { background: #4da8da; color: #000; }
         
         .panel-close { float:right; width:30px!important; height:30px; margin:-5px -5px 0 8px!important; padding:0!important; border:1px solid #4da8da!important; border-radius:6px!important; background:#1e1e2f!important; color:#fff!important; font-size:21px!important; cursor:pointer; }
-        .transfer-panel { top:155px; bottom:auto; max-height:calc(100vh - 180px); overflow:auto; }
+        .transfer-panel { top:112px; bottom:auto; right:15px; left:auto; width:min(340px,calc(100vw - 30px)); max-height:calc(100vh - 135px); overflow:auto; }
         .transfer-panel label { display:block; color:#b9c5d4; font-size:12px; margin:8px 0 4px; }
         .transfer-panel select { width:100%; padding:9px; border-radius:6px; background:#1e1e2f; color:#fff; border:1px solid #4da8da; }
         .connection-panel { position:absolute; left:15px; bottom:15px; z-index:1200; width:min(330px,calc(100vw - 30px)); background:rgba(20,20,35,.96); border:1px solid #4da8da; border-radius:9px; padding:12px; box-shadow:0 5px 18px rgba(0,0,0,.45); display:none; }
@@ -131,7 +131,22 @@
         .connection-actions button:disabled { opacity:.4; cursor:not-allowed; }
         .connection-status { color:#8ed0f5 !important; }
         .connection-route-label { color:#fff; background:rgba(15,22,32,.9); border:1px solid #f1d44d; border-radius:4px; padding:2px 5px; font-size:11px; font-weight:700; white-space:nowrap; }
-        @media (max-width:600px) { .floating-btn-group { flex-wrap:wrap; right:8px; top:8px; } .ui-btn { padding:9px 10px; font-size:12px; } .connection-panel { bottom:10px; left:10px; } }
+        .zone-link-panel { margin-top:10px; border-top:1px solid #3b4658; padding-top:10px; }
+        .zone-link-panel select { width:100%; margin:5px 0 8px; padding:9px; background:#1e1e2f; color:#fff; border:1px solid #4da8da; border-radius:6px; }
+        .zone-link-panel button { width:100%; padding:9px; background:#4da8da; color:#07131c; border:0; border-radius:6px; font-weight:700; }
+        .zone-link-panel .link-status { color:#9fd9f5; font-size:12px; line-height:1.4; }
+        .linked-zone-tag { color:#8ed0f5; font-size:10px; display:block; margin-top:3px; }
+        #satellite-map .badge-workers { display:none; }
+        @media (max-width:600px) {
+            .floating-btn-group { flex-wrap:wrap; right:8px; top:8px; max-width:calc(100vw - 16px); gap:6px; }
+            .ui-btn { padding:9px 10px; font-size:12px; }
+            .satellite-panel { top:168px; right:10px; width:min(310px,calc(100vw - 40px)); }
+            .transfer-panel { top:168px; right:10px; left:10px; width:auto; max-height:calc(100vh - 185px); }
+            .connection-panel { bottom:10px; left:10px; }
+            .manpower-badge { min-width:0; max-width:148px; padding:7px 9px; white-space:normal; }
+            .badge-header { gap:5px; }
+            .badge-zone { max-width:92px; overflow:hidden; text-overflow:ellipsis; }
+        }
         .leaflet-top.leaflet-left { top: 60px; left: 5px; }
     </style>
 </head>
@@ -233,6 +248,17 @@
                 <button onclick="toggleTransferPanel()">Close</button>
             </div>
             <p id="transferStatus" class="connection-status">No alignment saved. Engineering zones remain unchanged.</p>
+            <div class="zone-link-panel">
+                <strong>Link independently drawn zones</strong>
+                <p>Draw the real-world zone on Satellite View, then pair it with its corresponding engineering zone. The shapes stay independently editable but share one logical identity.</p>
+                <label for="linkEngineeringZone">Engineering drawing zone</label>
+                <select id="linkEngineeringZone"></select>
+                <label for="linkSatelliteZone">Satellite view zone</label>
+                <select id="linkSatelliteZone"></select>
+                <button type="button" onclick="linkSelectedZones()">Link these zones</button>
+                <button type="button" style="margin-top:7px;background:#30384b;color:#e8f4ff" onclick="unlinkSelectedZones()">Remove link</button>
+                <p id="zoneLinkStatus" class="link-status">No zones linked yet.</p>
+            </div>
         </div>
         <div id="satelliteAttributionNote" class="satellite-attribution-note" style="display:none">Satellite imagery © Esri and its data providers</div>
         <div id="connectionPanel" class="connection-panel">
@@ -298,6 +324,7 @@
                 edit:{ featureGroup:satelliteDrawnItems, remove:true }
             });
             satelliteMap.addControl(satelliteDrawControl);
+            satelliteMap.on('zoomend moveend', layoutSatelliteBadges);
             satelliteMap.on(L.Draw.Event.CREATED, onSatelliteZoneCreated);
             satelliteMap.on(L.Draw.Event.EDITED, onSatelliteZonesEdited);
             satelliteMap.on(L.Draw.Event.DELETED, onSatelliteZonesDeleted);
@@ -364,8 +391,11 @@
         }
 
         function toggleTransferPanel() {
+            document.getElementById('connectionPanel').classList.remove('visible');
+            document.getElementById('satellitePanel').classList.remove('visible');
             document.getElementById('transferPanel').classList.toggle('visible');
             refreshTransferZoneOptions();
+            refreshZoneLinkOptions();
         }
 
         function refreshTransferZoneOptions() {
@@ -375,6 +405,57 @@
             select.innerHTML = '<option value="">-- Select engineering zone --</option>';
             zones.forEach(z => { const opt=document.createElement('option'); opt.value=z.id; opt.textContent=(z.symbol ? z.symbol+' ' : '')+z.name+' ('+z.type+')'; select.appendChild(opt); });
             if (zones.some(z=>z.id===previous)) select.value=previous;
+        }
+
+        function refreshZoneLinkOptions() {
+            const eng=document.getElementById('linkEngineeringZone');
+            const sat=document.getElementById('linkSatelliteZone');
+            if (!eng || !sat) return;
+            const oldE=eng.value, oldS=sat.value;
+            eng.innerHTML='<option value="">-- Choose engineering zone --</option>';
+            sat.innerHTML='<option value="">-- Choose satellite zone --</option>';
+            zones.forEach(z=>{const o=document.createElement('option');o.value=z.id;o.textContent=z.name+' ('+z.type+')';eng.appendChild(o);});
+            satelliteZones.forEach(z=>{const o=document.createElement('option');o.value=z.id;o.textContent=z.name+' ('+z.type+')';sat.appendChild(o);});
+            if (zones.some(z=>z.id===oldE)) eng.value=oldE;
+            if (satelliteZones.some(z=>z.id===oldS)) sat.value=oldS;
+            showZoneLinkStatus();
+        }
+        function showZoneLinkStatus(message) {
+            const out=document.getElementById('zoneLinkStatus');
+            if (message) { out.textContent=message; return; }
+            const e=document.getElementById('linkEngineeringZone')?.value;
+            const s=document.getElementById('linkSatelliteZone')?.value;
+            const ez=zones.find(z=>z.id===e), sz=satelliteZones.find(z=>z.id===s);
+            if (ez?.linkGroupId && sz?.linkGroupId===ez.linkGroupId) out.textContent='These two zones are linked. Shared ID: '+ez.linkGroupId;
+            else out.textContent='Choose one zone from each map, then link them.';
+        }
+        function linkSelectedZones() {
+            const eid=document.getElementById('linkEngineeringZone').value;
+            const sid=document.getElementById('linkSatelliteZone').value;
+            const ez=zones.find(z=>z.id===eid), sz=satelliteZones.find(z=>z.id===sid);
+            if (!ez || !sz) { showZoneLinkStatus('Select one engineering zone and one satellite zone.'); return; }
+            const group='pair_'+Date.now();
+            ez.linkGroupId=group; sz.linkGroupId=group;
+            localStorage.setItem('plant_zones_v4',JSON.stringify(zones));
+            localStorage.setItem('plant_satellite_zones_v1',JSON.stringify(satelliteZones));
+            saveToDatabase();
+            refreshZoneLinkOptions();
+            document.getElementById('linkEngineeringZone').value=eid;
+            document.getElementById('linkSatelliteZone').value=sid;
+            showZoneLinkStatus('Linked successfully. Both shapes remain independently editable; equipment identity and future status reporting can refer to this shared link.');
+        }
+        function unlinkSelectedZones() {
+            const eid=document.getElementById('linkEngineeringZone').value;
+            const sid=document.getElementById('linkSatelliteZone').value;
+            const ez=zones.find(z=>z.id===eid), sz=satelliteZones.find(z=>z.id===sid);
+            if (!ez || !sz || !ez.linkGroupId || ez.linkGroupId!==sz.linkGroupId) {
+                showZoneLinkStatus('The selected zones are not linked to each other.'); return;
+            }
+            delete ez.linkGroupId; delete sz.linkGroupId;
+            localStorage.setItem('plant_zones_v4',JSON.stringify(zones));
+            localStorage.setItem('plant_satellite_zones_v1',JSON.stringify(satelliteZones));
+            saveToDatabase(); refreshZoneLinkOptions();
+            showZoneLinkStatus('Link removed. Neither geometry was deleted.');
         }
 
         function beginZoneAlignment() {
@@ -435,7 +516,11 @@
         function cancelZoneAlignment() { zoneAlignment={active:false,phase:'source',pairs:[]}; document.getElementById('transferStatus').textContent='Alignment cancelled. No map geometry was changed.'; }
 
         // --- INDEPENDENT CONNECTION ROUTES (engineering vs geographical) ---
-        function toggleConnectionPanel() { document.getElementById('connectionPanel').classList.toggle('visible'); }
+        function toggleConnectionPanel() {
+            document.getElementById('transferPanel').classList.remove('visible');
+            document.getElementById('satellitePanel').classList.remove('visible');
+            document.getElementById('connectionPanel').classList.toggle('visible');
+        }
         function activeConnectionLayer() { return currentMapView === 'engineering' ? engineeringConnectionLayer : satelliteConnectionLayer; }
         function activeMapInstance() { return currentMapView === 'engineering' ? map : satelliteMap; }
         function routeColor(route) { return route.color || '#f1d44d'; }
@@ -522,6 +607,8 @@
             localStorage.setItem('plant_workers_v4', JSON.stringify(workers));
             localStorage.setItem('plant_satellite_zones_v1', JSON.stringify(satelliteZones));
             renderDashboard();
+            refreshTransferZoneOptions();
+            refreshZoneLinkOptions();
             if (satelliteMap) renderSatelliteZones(); 
         }
 
@@ -657,10 +744,32 @@
                 if (z.type !== 'polyline' || (assigned[z.id] || []).length) {
                     const people = assigned[z.id] || [];
                     const workersHtml = people.length ? '<div class="badge-workers">' + people.map(w => `<div class="worker-item"><span>${escapeHtml(w.name)}</span><span>${escapeHtml(w.role)}</span></div>`).join('') + '</div>' : '';
-                    const html = `<div class="manpower-badge"><div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${z.symbol || ''}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div><div class="badge-count">${people.length} Personnel</div>${workersHtml}</div>`;
+                    const linkedTag = z.linkGroupId ? '<span class="linked-zone-tag">LINKED ZONE</span>' : '';
+                    const html = `<div class="manpower-badge"><div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${z.symbol || ''}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div><div class="badge-count">${people.length} Personnel</div>${linkedTag}${workersHtml}</div>`;
                     const icon = L.divIcon({className:'transparent-icon',iconSize:[0,0],iconAnchor:[0,0],html});
-                    satelliteZoneBadgeMarkers[z.id] = L.marker(center,{icon,interactive:false}).addTo(satelliteMap);
+                    const badgeMarker=L.marker(center,{icon,interactive:false}).addTo(satelliteMap);
+                    badgeMarker._badgeAnchor=center;
+                    satelliteZoneBadgeMarkers[z.id] = badgeMarker;
                 }
+            });
+            layoutSatelliteBadges();
+        }
+        function layoutSatelliteBadges() {
+            if (!satelliteMap) return;
+            const occupied=[];
+            const candidates=[[0,-62],[0,62],[158,0],[-158,0],[158,-65],[-158,-65],[158,65],[-158,65],[0,-125],[0,125]];
+            Object.values(satelliteZoneBadgeMarkers).forEach(marker=>{
+                const base=satelliteMap.latLngToLayerPoint(marker._badgeAnchor);
+                let chosen=[0,0], rect=null;
+                for (const offset of candidates) {
+                    const cx=base.x+offset[0], cy=base.y+offset[1];
+                    const r={l:cx-76,r:cx+76,t:cy-34,b:cy+34};
+                    const collision=occupied.some(o=>!(r.r<o.l || r.l>o.r || r.b<o.t || r.t>o.b));
+                    if (!collision) { chosen=offset; rect=r; break; }
+                }
+                if (!rect) { chosen=candidates[occupied.length % candidates.length]; const cx=base.x+chosen[0],cy=base.y+chosen[1]; rect={l:cx-76,r:cx+76,t:cy-34,b:cy+34}; }
+                occupied.push(rect);
+                marker.setLatLng(satelliteMap.layerPointToLatLng(L.point(base.x+chosen[0],base.y+chosen[1])));
             });
         }
         function escapeHtml(value) { return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
