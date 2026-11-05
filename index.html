@@ -148,6 +148,47 @@
             .badge-zone { max-width:92px; overflow:hidden; text-overflow:ellipsis; }
         }
         .leaflet-top.leaflet-left { top: 60px; left: 5px; }
+    
+        /* Reliability + responsive UX layer */
+        :root { color-scheme: dark; }
+        button, input, select { touch-action: manipulation; }
+        .satellite-panel, .connection-panel, .transfer-panel {
+            z-index: 1500; max-width: calc(100vw - 24px);
+            max-height: min(72vh, 620px); overflow-y: auto;
+            overscroll-behavior: contain; backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 18px 48px rgba(0,0,0,.42);
+        }
+        .satellite-panel { top: max(112px, env(safe-area-inset-top)); right: 12px; width: min(360px, calc(100vw - 24px)); }
+        .transfer-panel { top: max(112px, env(safe-area-inset-top)); right: 12px; width: min(380px, calc(100vw - 24px)); }
+        .connection-panel { max-height: min(65vh, 560px); }
+        .satellite-panel input, .transfer-panel select, .transfer-panel button {
+            min-height: 42px; font-size: 14px;
+        }
+        .manpower-badge {
+            min-width: 0; max-width: min(230px, 42vw); padding: clamp(6px, .9vw, 12px) clamp(8px, 1.2vw, 16px);
+            border-radius: 12px; box-sizing: border-box;
+            transform: translate(-50%,-50%) scale(var(--badge-scale,1));
+            transform-origin: center center;
+            transition: transform .16s ease, opacity .16s ease;
+        }
+        .badge-zone { display:inline-block; max-width: 145px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .badge-workers { max-width: 100%; max-height: 100px; overflow:auto; }
+        .leaflet-tooltip { border-radius: 7px; font-weight: 650; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+        .leaflet-draw-toolbar a { width: 38px!important; height: 38px!important; }
+        .leaflet-control-zoom a { width: 38px!important; height: 38px!important; line-height:38px!important; }
+        @media (max-width: 640px) {
+            .satellite-panel { top: 176px; right: 10px; width: calc(100vw - 20px); max-height: 52vh; }
+            .transfer-panel { top: 176px; right: 10px; left: 10px; width: auto; max-height: 58vh; }
+            .connection-panel { left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); width:auto; }
+            .manpower-badge { max-width: 132px; padding: 6px 8px; border-radius: 9px; }
+            .badge-zone { max-width: 76px; font-size: 11px; }
+            .badge-header { gap: 5px; margin-bottom: 3px; padding-bottom: 3px; }
+            .machine-symbol { font-size: 15px; }
+            .badge-count { font-size: 10px; }
+            .badge-workers { display:none; }
+        }
+
     </style>
 </head>
 <body class="sidebar-closed">
@@ -324,11 +365,14 @@
                 edit:{ featureGroup:satelliteDrawnItems, remove:true }
             });
             satelliteMap.addControl(satelliteDrawControl);
-            satelliteMap.on('zoomend moveend', layoutSatelliteBadges);
+            satelliteMap.on('zoomend moveend', function(){ layoutSatelliteBadges(); updateSatelliteBadgeScale(); });
             satelliteMap.on(L.Draw.Event.CREATED, onSatelliteZoneCreated);
             satelliteMap.on(L.Draw.Event.EDITED, onSatelliteZonesEdited);
             satelliteMap.on(L.Draw.Event.DELETED, onSatelliteZonesDeleted);
             satelliteMap.on(L.Draw.Event.EDITED, persistEditedConnections);
+            // Restore persisted satellite geometry after the map and edit feature group exist.
+            renderSatelliteZones();
+            renderConnectionRoutes();
             if (plantSite && Number.isFinite(plantSite.lat) && Number.isFinite(plantSite.lng)) {
                 document.getElementById('plantLatitude').value = plantSite.lat;
                 document.getElementById('plantLongitude').value = plantSite.lng;
@@ -348,7 +392,15 @@
             document.getElementById('satelliteModeBtn').classList.toggle('active', !engineering);
             if (!engineering) initializeSatelliteMap();
             updateConnectionStatus();
-            setTimeout(() => { if (engineering) map.invalidateSize(); else satelliteMap.invalidateSize(); }, 100);
+            setTimeout(() => {
+                if (engineering) map.invalidateSize();
+                else {
+                    satelliteMap.invalidateSize();
+                    renderSatelliteZones();
+                    renderConnectionRoutes();
+                    updateSatelliteBadgeScale();
+                }
+            }, 180);
         }
 
         function recenterCurrentMap() {
@@ -370,7 +422,11 @@
             document.getElementById('plantLongitude').value = plantSite.lng.toFixed(6);
             document.getElementById('plantLocationStatus').textContent = 'Saved plant location: ' + plantSite.lat.toFixed(6) + ', ' + plantSite.lng.toFixed(6);
             placePlantMarker(plantSite.lat, plantSite.lng);
-            if (fromMapClick) satelliteMap.setView([plantSite.lat, plantSite.lng], Math.max(satelliteMap.getZoom(), 16));
+            if (fromMapClick) {
+                satellitePanelDismissed = true;
+                document.getElementById('satellitePanel').classList.remove('visible');
+                satelliteMap.setView([plantSite.lat, plantSite.lng], Math.max(satelliteMap.getZoom(), 16));
+            }
         }
 
         function goToPlantLocation() {
@@ -434,6 +490,13 @@
             const sid=document.getElementById('linkSatelliteZone').value;
             const ez=zones.find(z=>z.id===eid), sz=satelliteZones.find(z=>z.id===sid);
             if (!ez || !sz) { showZoneLinkStatus('Select one engineering zone and one satellite zone.'); return; }
+            // Enforce one engineering zone <-> one satellite zone per logical pair.
+            const previousGroupIds = [ez.linkGroupId, sz.linkGroupId].filter(Boolean);
+            previousGroupIds.forEach(oldGroup => {
+                [...zones, ...satelliteZones].forEach(item => {
+                    if (item.linkGroupId === oldGroup) delete item.linkGroupId;
+                });
+            });
             const group='pair_'+Date.now();
             ez.linkGroupId=group; sz.linkGroupId=group;
             localStorage.setItem('plant_zones_v4',JSON.stringify(zones));
@@ -602,14 +665,27 @@
         let zones = JSON.parse(localStorage.getItem('plant_zones_v4')) || [];
         let workers = JSON.parse(localStorage.getItem('plant_workers_v4')) || [];
         
-        function saveToDatabase() { 
-            localStorage.setItem('plant_zones_v4', JSON.stringify(zones));
-            localStorage.setItem('plant_workers_v4', JSON.stringify(workers));
-            localStorage.setItem('plant_satellite_zones_v1', JSON.stringify(satelliteZones));
+        function persistPlantData() {
+            try {
+                localStorage.setItem('plant_zones_v4', JSON.stringify(zones));
+                localStorage.setItem('plant_workers_v4', JSON.stringify(workers));
+                localStorage.setItem('plant_satellite_zones_v1', JSON.stringify(satelliteZones));
+                localStorage.setItem('plant_connection_routes_v1', JSON.stringify(connectionRoutes));
+                return true;
+            } catch (err) {
+                console.error('Plant Tracker save failed:', err);
+                const status = document.getElementById('zoneLinkStatus') || document.getElementById('plantLocationStatus');
+                if (status) status.textContent = 'Could not save locally. Browser storage may be full or unavailable. Export/backup your data before continuing.';
+                return false;
+            }
+        }
+        function saveToDatabase() {
+            const saved = persistPlantData();
             renderDashboard();
             refreshTransferZoneOptions();
             refreshZoneLinkOptions();
-            if (satelliteMap) renderSatelliteZones(); 
+            if (satelliteMap) renderSatelliteZones();
+            if (!saved) console.warn('Changes are currently only in memory and were not persisted.');
         }
 
         // --- MAP INITIALIZATION ---
@@ -696,20 +772,30 @@
             if (type === 'marker') item.latlng = layer.getLatLng();
             else item.latlngs = layer.getLatLngs();
             satelliteZones.push(item);
-            saveToDatabase();
+            persistPlantData();
+            renderSatelliteZones();
+            updateDropdowns();
+            refreshZoneLinkOptions();
         }
         function onSatelliteZonesEdited(e) {
             e.layers.eachLayer(layer => {
                 const z = satelliteZones.find(x => x.id === layer.zoneId);
                 if (!z) return;
-                if (z.type === 'marker') z.latlng = layer.getLatLng();
-                else z.latlngs = layer.getLatLngs();
+                if (z.type === 'marker') {
+                    const ll = layer.getLatLng();
+                    z.latlng = {lat:ll.lat, lng:ll.lng};
+                } else {
+                    z.latlngs = layer.getLatLngs();
+                }
             });
-            saveToDatabase();
+            persistPlantData();
+            renderSatelliteZones();
         }
         function onSatelliteZonesDeleted(e) {
             e.layers.eachLayer(layer => {
                 if (layer.zoneId) {
+                    const removed = satelliteZones.find(z => z.id === layer.zoneId);
+                    if (removed && removed.linkGroupId) zones.forEach(peer => { if (peer.linkGroupId === removed.linkGroupId) delete peer.linkGroupId; });
                     satelliteZones = satelliteZones.filter(z => z.id !== layer.zoneId);
                     workers.forEach(w => { if (w.zoneId === layer.zoneId) w.zoneId = null; });
                 }
@@ -723,9 +809,17 @@
             satelliteZoneBadgeMarkers = {};
             const assigned = {};
             satelliteZones.forEach(z => assigned[z.id] = []);
-            workers.forEach(w => { if (w.zoneId && assigned[w.zoneId]) assigned[w.zoneId].push(w); });
+            workers.forEach(w => {
+                if (!w.zoneId) return;
+                const assignedZone = [...zones, ...satelliteZones].find(item => item.id === w.zoneId);
+                const groupId = assignedZone && assignedZone.linkGroupId;
+                satelliteZones.forEach(target => {
+                    if (target.id === w.zoneId || (groupId && target.linkGroupId === groupId)) assigned[target.id].push(w);
+                });
+            });
             satelliteZones.forEach(z => {
-                const status = z.status || 'running';
+                const linkedPeer = z.linkGroupId ? zones.find(peer => peer.linkGroupId === z.linkGroupId) : null;
+                const status = (linkedPeer && linkedPeer.status) || z.status || 'running';
                 const color = status === 'running' ? '#00d66b' : status === 'maintenance' ? '#ffaa00' : '#ff3030';
                 let shape, center;
                 if (z.type === 'marker') {
@@ -753,6 +847,16 @@
                 }
             });
             layoutSatelliteBadges();
+        }
+
+        function updateSatelliteBadgeScale() {
+            if (!satelliteMap) return;
+            const zoom = satelliteMap.getZoom();
+            // Keep badges readable on mobile while gently scaling with map zoom.
+            const scale = Math.max(0.72, Math.min(1.18, Math.pow(1.12, zoom - 16)));
+            document.querySelectorAll('#satellite-map .manpower-badge').forEach(el => {
+                el.style.setProperty('--badge-scale', String(scale));
+            });
         }
         function layoutSatelliteBadges() {
             if (!satelliteMap) return;
@@ -793,10 +897,15 @@
             if(!zId) return alert('Select a zone first.');
             
             const z = findZoneById(zId);
-            if(z) { 
-                z.status = newStatus; 
-                z.symbol = newSymbol;
-                saveToDatabase(); 
+            if(z) {
+                const linkedId = z.linkGroupId;
+                const all = [...zones, ...satelliteZones];
+                const targets = linkedId ? all.filter(item => item.linkGroupId === linkedId) : [z];
+                targets.forEach(item => {
+                    item.status = newStatus;
+                    item.symbol = newSymbol;
+                });
+                saveToDatabase();
             }
         }
 
@@ -818,7 +927,14 @@
             
             const zoneWorkers = {};
             zones.forEach(z => zoneWorkers[z.id] = []);
-            workers.forEach(w => { if(w.zoneId && zoneWorkers[w.zoneId]) zoneWorkers[w.zoneId].push(w); });
+            workers.forEach(w => {
+                if (!w.zoneId) return;
+                const assignedZone = [...zones, ...satelliteZones].find(item => item.id === w.zoneId);
+                const groupId = assignedZone && assignedZone.linkGroupId;
+                zones.forEach(target => {
+                    if (target.id === w.zoneId || (groupId && target.linkGroupId === groupId)) zoneWorkers[target.id].push(w);
+                });
+            });
             
             zones.forEach(zone => {
                 let centerPoint;
