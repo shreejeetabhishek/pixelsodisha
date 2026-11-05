@@ -1,1585 +1,221 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plant Flow Tracker - Industrial Symbols</title>
-    
-    <!-- Leaflet CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Leaflet Draw CSS & JS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
-    <style>
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; overflow: hidden; background: #121212; color: #e0e0e0; }
-        
-        #sidebar { 
-            position: absolute; left: 0; top: 0; bottom: 0; width: 360px; max-width: 90vw; 
-            background: #1e1e2f; border-right: 1px solid #2a2a40; padding: 20px; overflow-y: auto; 
-            box-sizing: border-box; z-index: 2000; box-shadow: 4px 0 15px rgba(0,0,0,0.5); 
-            transform: translateX(0); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        body.sidebar-closed #sidebar { transform: translateX(-100%); box-shadow: none; }
-        #map-container { flex-grow: 1; position: relative; height: 100vh; width: 100vw; display: flex; flex-direction: column; }
-        #map, #satellite-map { flex-grow: 1; background-color: #0a0a10; width: 100%; height: 100%; }
-        #satellite-map { display: none; }
-        .map-mode-btn.active { background: #4da8da; color: #08131d; }
-        .satellite-panel { position: absolute; top: 112px; right: 15px; z-index: 1100; width: min(310px, calc(100vw - 30px)); background: rgba(20,20,35,.96); border: 1px solid #4da8da; border-radius: 9px; padding: 13px; box-shadow: 0 5px 18px rgba(0,0,0,.45); display: none; }
-        .satellite-panel.visible { display: block; }
-        .satellite-panel p { margin: 4px 0 9px; color: #b9c5d4; font-size: 12px; line-height: 1.45; }
-        .coordinate-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .satellite-panel button { width: 100%; margin-top: 9px; padding: 9px; border: 0; border-radius: 6px; background: #4da8da; color: #07131c; font-weight: 700; cursor: pointer; }
-        .satellite-attribution-note { position: absolute; bottom: 8px; right: 8px; z-index: 500; background: rgba(20,20,35,.8); color: #fff; padding: 4px 7px; border-radius: 4px; font-size: 10px; pointer-events: none; }
-        
-        h2 { font-size: 15px; margin-top: 0; color: #4da8da; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #2a2a40; padding-bottom: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .close-sidebar-btn { background: none; border: none; color: #a0a0b5; font-size: 20px; cursor: pointer; }
-        .close-sidebar-btn:hover { color: #fff; }
-        
-        .control-panel { background: #252538; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #33334d; }
-        
-        label { font-size: 12px; color: #a0a0b5; font-weight: 600; text-transform: uppercase; margin-top: 8px; display: block; }
-        input, select, button.action-btn { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #33334d; border-radius: 6px; box-sizing: border-box; font-size: 14px; background: #1e1e2f; color: #fff; }
-        input:focus, select:focus { outline: none; border-color: #4da8da; box-shadow: 0 0 0 2px rgba(77,168,218,0.2); }
-        
-        button.action-btn { background: #4da8da; color: #000; border: none; cursor: pointer; font-weight: 700; transition: all 0.2s; margin-top: 15px; }
-        button.action-btn:hover { background: #3b8bb8; transform: translateY(-1px); }
-        button.danger-btn { background: #dc3545; color: white; }
-        button.danger-btn:hover { background: #c82333; }
-        
-        .worker-card { background: #2a2a40; padding: 12px; margin-bottom: 10px; border-left: 4px solid #4da8da; border-radius: 4px; }
-        .worker-name { font-weight: 600; font-size: 14px; color: #fff; display: flex; justify-content: space-between; align-items: center; }
-        .role-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #33334d; color: #a0a0b5; text-transform: uppercase; }
-        
-        /* 
-         * UPGRADED MAP BADGES WITH EMOJI SYMBOLS
-         */
-        .transparent-icon { overflow: visible !important; width:0 !important; height:0 !important; margin:0 !important; border:0 !important; background:transparent !important; }
-        .leaflet-marker-icon.transparent-icon { pointer-events:none; }
-        .leaflet-marker-icon.transparent-icon .manpower-badge { pointer-events:auto; position:absolute !important; left:0 !important; top:0 !important; transform:translate(-50%,-50%) scale(var(--badge-scale,1)) !important; transform-origin:50% 50% !important; }
-        .manpower-badge { 
-            position: absolute; transform: translate(-50%, -50%);
-            background: rgba(20, 20, 35, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            color: white; padding: 12px 18px; border-radius: 8px; text-align: center; 
-            border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.5); 
-            white-space: nowrap; pointer-events: auto; min-width: 130px;
-            transition: all 0.3s ease;
-        }
-        
-
-        .manpower-badge { cursor: grab; touch-action: none; user-select: none; -webkit-user-select:none; }
-        .manpower-badge:active { cursor: grabbing; }
-        .badge-drag-note { display:block; margin-top:4px; font-size:9px; color:#8fcfff; opacity:.85; letter-spacing:.04em; }
-
-        .badge-header { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
-        
-        /* New styling for the industrial symbol */
-        .machine-symbol { font-size: 20px; filter: drop-shadow(0 0 2px rgba(255,255,255,0.3)); }
-        
-        .badge-zone { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.3s; }
-        .badge-count { font-size: 12px; font-weight: 600; color: #a0a0b5; transition: all 0.3s; }
-        
-        .badge-workers { font-size: 12px; font-weight: 500; margin-top: 8px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; white-space: normal; max-width: 200px; text-align: left; line-height: 1.5; display: inline-block; transition: all 0.3s; }
-        .worker-item { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px; margin-bottom: 2px; }
-        .worker-item:last-child { border: none; margin: 0; padding: 0; }
-        
-        /* ZOOM SCALING */
-        .zoom-level-out .manpower-badge { padding: 4px 8px; min-width: auto; background: rgba(20, 20, 35, 0.95); }
-        .zoom-level-out .badge-header { margin: 0; padding: 0; border: none; }
-        .zoom-level-out .badge-zone { display: none; } 
-        .zoom-level-out .badge-count { display: none; } 
-        .zoom-level-out .badge-workers { display: none; } 
-        .zoom-level-out .machine-symbol { font-size: 14px; margin-left: 4px; } /* Keep symbol small when zoomed out */
-        .zoom-level-out .led { margin: 0; transform: scale(1.5); } 
-        
-        .zoom-level-mid .manpower-badge { padding: 8px 12px; min-width: 100px; }
-        .zoom-level-mid .badge-zone { font-size: 11px; }
-        .zoom-level-mid .badge-workers { display: none; } 
-        .zoom-level-mid .badge-count { font-size: 10px; }
-        .zoom-level-mid .machine-symbol { font-size: 16px; }
-
-        /* ADVANCED ANIMATIONS */
-        .led { width: 12px; height: 12px; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px currentColor; transition: transform 0.3s; }
-        .led-running { background: #00ff00; color: #00ff00; animation: blink-fast 0.5s infinite; }
-        .led-maintenance { background: #ffaa00; color: #ffaa00; animation: blink-slow 2s infinite; }
-        .led-offline { background: #ff0000; color: #ff0000; }
-        
-        @keyframes blink-fast { 0% {opacity: 1; box-shadow: 0 0 12px currentColor;} 50% {opacity: 0.3; box-shadow: 0 0 2px currentColor;} 100% {opacity: 1; box-shadow: 0 0 12px currentColor;} }
-        @keyframes blink-slow { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
-        .flowing-line { animation: dash-flow 1s linear infinite; }
-        @keyframes dash-flow { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
-        .pulsing-zone { animation: zone-pulse 2s ease-in-out infinite; }
-        @keyframes zone-pulse { 0% { fill-opacity: 0.1; } 50% { fill-opacity: 0.4; } 100% { fill-opacity: 0.1; } }
-
-        /* Floating UI Buttons */
-        .floating-btn-group { position: absolute; top: 15px; left: 15px; z-index: 1000; display: flex; gap: 10px; }
-        .ui-btn { 
-            background: #1e1e2f; color: #4da8da; border: 1px solid #4da8da; 
-            padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 700; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 5px;
-            transition: all 0.2s;
-        }
-        .ui-btn:hover { background: #4da8da; color: #000; }
-        
-        .panel-close { float:right; width:30px!important; height:30px; margin:-5px -5px 0 8px!important; padding:0!important; border:1px solid #4da8da!important; border-radius:6px!important; background:#1e1e2f!important; color:#fff!important; font-size:21px!important; cursor:pointer; }
-        .transfer-panel { top:112px; bottom:auto; right:15px; left:auto; width:min(340px,calc(100vw - 30px)); max-height:calc(100vh - 135px); overflow:auto; }
-        .transfer-panel label { display:block; color:#b9c5d4; font-size:12px; margin:8px 0 4px; }
-        .transfer-panel select { width:100%; padding:9px; border-radius:6px; background:#1e1e2f; color:#fff; border:1px solid #4da8da; }
-        .connection-panel { position:absolute; left:15px; bottom:15px; z-index:1200; width:min(330px,calc(100vw - 30px)); background:rgba(20,20,35,.96); border:1px solid #4da8da; border-radius:9px; padding:12px; box-shadow:0 5px 18px rgba(0,0,0,.45); display:none; }
-        .connection-panel.visible { display:block; }
-        .connection-panel strong { color:#fff; }
-        .connection-panel p { color:#b9c5d4; font-size:12px; line-height:1.4; margin:5px 0 8px; }
-        .connection-actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
-        .connection-actions button { border:1px solid #4da8da; border-radius:6px; padding:9px 7px; background:#1e1e2f; color:#d9efff; font-weight:700; cursor:pointer; }
-        .connection-actions button.primary { background:#4da8da; color:#07131c; }
-        .connection-actions button:disabled { opacity:.4; cursor:not-allowed; }
-        .connection-status { color:#8ed0f5 !important; }
-        .connection-route-label { color:#fff; background:rgba(15,22,32,.9); border:1px solid #f1d44d; border-radius:4px; padding:2px 5px; font-size:11px; font-weight:700; white-space:nowrap; }
-        .zone-link-panel { margin-top:10px; border-top:1px solid #3b4658; padding-top:10px; }
-        .zone-link-panel select { width:100%; margin:5px 0 8px; padding:9px; background:#1e1e2f; color:#fff; border:1px solid #4da8da; border-radius:6px; }
-        .zone-link-panel button { width:100%; padding:9px; background:#4da8da; color:#07131c; border:0; border-radius:6px; font-weight:700; }
-        .zone-link-panel .link-status { color:#9fd9f5; font-size:12px; line-height:1.4; }
-        .linked-zone-tag { color:#8ed0f5; font-size:10px; display:block; margin-top:3px; }
-        #satellite-map .badge-workers { display:none; }
-        @media (max-width:600px) {
-            .floating-btn-group { flex-wrap:wrap; right:8px; top:8px; max-width:calc(100vw - 16px); gap:6px; }
-            .ui-btn { padding:9px 10px; font-size:12px; }
-            .satellite-panel { top:168px; right:10px; width:min(310px,calc(100vw - 40px)); }
-            .transfer-panel { top:168px; right:10px; left:10px; width:auto; max-height:calc(100vh - 185px); }
-            .connection-panel { bottom:10px; left:10px; }
-            .manpower-badge { min-width:0; max-width:148px; padding:7px 9px; white-space:normal; }
-            .badge-header { gap:5px; }
-            .badge-zone { max-width:92px; overflow:hidden; text-overflow:ellipsis; }
-        }
-        .leaflet-top.leaflet-left { top: 60px; left: 5px; }
-    
-        /* Reliability + responsive UX layer */
-        :root { color-scheme: dark; }
-        button, input, select { touch-action: manipulation; }
-        .satellite-panel, .connection-panel, .transfer-panel {
-            z-index: 1500; max-width: calc(100vw - 24px);
-            max-height: min(72vh, 620px); overflow-y: auto;
-            overscroll-behavior: contain; backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            box-shadow: 0 18px 48px rgba(0,0,0,.42);
-        }
-        .satellite-panel { top: max(112px, env(safe-area-inset-top)); right: 12px; width: min(360px, calc(100vw - 24px)); }
-        .transfer-panel { top: max(112px, env(safe-area-inset-top)); right: 12px; width: min(380px, calc(100vw - 24px)); }
-        .connection-panel { max-height: min(65vh, 560px); }
-        .satellite-panel input, .transfer-panel select, .transfer-panel button {
-            min-height: 42px; font-size: 14px;
-        }
-        .manpower-badge {
-            min-width: 0; max-width: min(230px, 42vw); padding: clamp(6px, .9vw, 12px) clamp(8px, 1.2vw, 16px);
-            border-radius: 12px; box-sizing: border-box;
-            transform: translate(-50%,-50%) scale(var(--badge-scale,1));
-            transform-origin: center center;
-            transition: transform .16s ease, opacity .16s ease;
-        }
-        .badge-zone { display:inline-block; max-width: 145px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .badge-workers { max-width: 100%; max-height: 100px; overflow:auto; }
-        .leaflet-tooltip { border-radius: 7px; font-weight: 650; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
-        .leaflet-draw-toolbar a { width: 38px!important; height: 38px!important; }
-        .leaflet-control-zoom a { width: 38px!important; height: 38px!important; line-height:38px!important; }
-        @media (max-width: 640px) {
-            .satellite-panel { top: 176px; right: 10px; width: calc(100vw - 20px); max-height: 52vh; }
-            .transfer-panel { top: 176px; right: 10px; left: 10px; width: auto; max-height: 58vh; }
-            .connection-panel { left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); width:auto; }
-            .manpower-badge { max-width: 132px; padding: 6px 8px; border-radius: 9px; }
-            .badge-zone { max-width: 76px; font-size: 11px; }
-            .badge-header { gap: 5px; margin-bottom: 3px; padding-bottom: 3px; }
-            .machine-symbol { font-size: 15px; }
-            .badge-count { font-size: 10px; }
-            .badge-workers { display:none; }
-        }
-
-
-
-        /* PATCH: responsive map chrome and compact, collision-aware zone labels */
-        .floating-btn-group {
-            position:absolute; top:10px; left:10px; right:10px; z-index:1800;
-            display:flex; flex-wrap:nowrap; align-items:center; gap:7px;
-            max-width:calc(100% - 20px); overflow-x:auto; overflow-y:hidden;
-            padding:3px 2px 8px; scrollbar-width:none; -webkit-overflow-scrolling:touch;
-        }
-        .floating-btn-group::-webkit-scrollbar { display:none; }
-        .ui-btn { flex:0 0 auto; min-height:42px; white-space:nowrap; font-size:13px; }
-        .leaflet-top.leaflet-left { top:66px !important; left:8px !important; }
-        .leaflet-top.leaflet-right { top:66px !important; right:8px !important; }
-        .manpower-badge {
-            min-width:0 !important; max-width:154px !important; width:max-content;
-            padding:6px 9px !important; border-radius:9px !important;
-            white-space:nowrap !important; text-align:left !important;
-            background:rgba(18,24,34,.94) !important;
-            border:1px solid rgba(148,163,184,.38) !important;
-            box-shadow:0 5px 16px rgba(0,0,0,.38) !important;
-        }
-        .badge-header { justify-content:flex-start !important; gap:6px !important; margin:0 !important; padding:0 0 3px !important; }
-        .machine-symbol { font-size:15px !important; }
-        .badge-zone { max-width:104px !important; font-size:11px !important; letter-spacing:0 !important; }
-        .badge-count { font-size:10px !important; margin-top:2px !important; }
-        .badge-workers { display:none !important; }
-        #satellite-map .manpower-badge { max-width:140px !important; }
-        .leaflet-draw-toolbar a, .leaflet-control-zoom a { width:38px !important; height:38px !important; line-height:38px !important; }
-        .leaflet-control-container { z-index:900; }
-        /* Mobile badge anchoring: the geographic coordinate is the badge centre. */
-        .leaflet-marker-icon.transparent-icon { width:0 !important; height:0 !important; margin:0 !important; }
-        .leaflet-marker-icon.transparent-icon > .manpower-badge { left:0 !important; top:0 !important; margin:0 !important; }
-        @media (max-width:640px) {
-            .leaflet-marker-icon.transparent-icon > .manpower-badge {
-                max-width:min(126px, 38vw) !important;
-                width:max-content !important;
-                padding:5px 7px !important;
-                font-size:11px !important;
-                white-space:normal !important;
-                line-height:1.2 !important;
-                --badge-scale: .92;
-            }
-            .leaflet-marker-icon.transparent-icon .badge-header { min-width:0; }
-            .leaflet-marker-icon.transparent-icon .badge-zone { max-width:76px !important; overflow:hidden; text-overflow:ellipsis; }
-            .leaflet-marker-icon.transparent-icon .badge-count { white-space:nowrap; }
-            .leaflet-marker-icon.transparent-icon .badge-drag-note { display:none !important; }
-            .floating-btn-group {
-                top:5px; left:7px; right:7px; max-width:calc(100% - 14px);
-                display:grid; grid-template-columns:minmax(0,.78fr) minmax(0,1.42fr) minmax(0,1.18fr);
-                grid-auto-rows:minmax(38px,auto); gap:5px; padding:0; overflow:visible;
-            }
-            .ui-btn { width:100%; min-width:0; min-height:38px; padding:6px 5px !important; font-size:11px !important; line-height:1.15; justify-content:center; text-align:center; white-space:normal; overflow-wrap:anywhere; }
-            .ui-btn svg { flex:0 0 auto; }
-            .leaflet-top.leaflet-left { top:96px !important; left:7px !important; }
-            .leaflet-top.leaflet-right { top:96px !important; right:7px !important; }
-            .satellite-panel { top:105px !important; right:8px !important; width:calc(100vw - 16px) !important; max-height:55vh !important; }
-            .transfer-panel { top:105px !important; right:8px !important; left:8px !important; width:auto !important; max-height:58vh !important; }
-            .connection-panel { left:8px !important; right:8px !important; bottom:max(8px,env(safe-area-inset-bottom)) !important; width:auto !important; }
-            .manpower-badge { max-width:124px !important; padding:5px 7px !important; }
-            .badge-zone { max-width:75px !important; font-size:10px !important; }
-            .badge-count { font-size:9px !important; }
-            .led { width:8px !important; height:8px !important; }
-        }
-        @media (min-width:641px) {
-            .floating-btn-group { flex-wrap:wrap; max-width:calc(100% - 30px); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .led-running, .led-maintenance, .flowing-line, .pulsing-zone { animation:none !important; }
-            *, *::before, *::after { scroll-behavior:auto !important; transition-duration:.01ms !important; }
-        }
-
-    
-        /* Adaptive satellite labels: zoom-dependent map information */
-        .satellite-dot { width:9px; height:9px; border-radius:50%; border:1px solid rgba(255,255,255,.9); }
-        .satellite-compact-tag { display:flex; align-items:center; gap:6px; max-width:150px; padding:5px 9px;
-            border-radius:14px; background:rgba(15,22,32,.91); color:#f4f7fb; border:1px solid rgba(125,190,225,.65);
-            box-shadow:0 2px 8px rgba(0,0,0,.38); font-size:11px; font-weight:700; line-height:1.2; white-space:nowrap; }
-        .satellite-tag-dot { width:7px; height:7px; flex:0 0 7px; border-radius:50%; box-shadow:0 0 5px currentColor; }
-        .satellite-info-card { min-width:112px !important; max-width:160px; padding:7px 9px !important; font-size:11px; }
-        .satellite-info-card .badge-header { gap:5px; margin-bottom:3px; padding-bottom:3px; }
-        .satellite-info-card .machine-symbol { font-size:14px; }
-        .satellite-info-card .badge-count { font-size:10px; }
-        .satellite-detail-card { min-width:130px !important; max-width:190px; }
-        .satellite-cluster-icon { background:transparent; border:0; }
-        .satellite-cluster { display:flex; align-items:center; justify-content:center; width:38px; height:38px;
-            border-radius:50%; color:#fff; background:rgba(23,119,177,.96); border:3px solid rgba(255,255,255,.95);
-            box-shadow:0 2px 12px rgba(0,0,0,.55); font-size:13px; font-weight:800; cursor:pointer; }
-        .satellite-cluster:after { content:''; position:absolute; inset:-6px; border:1px solid rgba(77,168,218,.6); border-radius:50%; }
-        @media(max-width:640px) {
-            .satellite-compact-tag { max-width:118px; font-size:10px; padding:4px 7px; }
-            .satellite-info-card { max-width:132px; min-width:100px !important; padding:6px 7px !important; }
-            .satellite-detail-card { max-width:155px; }
-        }
-
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101a18">
+  <title>Plant Tracker — Operations Prototype</title>
+  <link rel="icon" href="assets/plant-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body class="sidebar-closed">
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#" aria-label="Plant Tracker home">
+        <img src="assets/plant-mark.svg" alt="">
+        <span><b>PLANT</b><small>TRACKER</small></span>
+      </a>
+      <div class="plant-select"><span class="plant-dot"></span><span><b>Angul Plant</b><small>Operations workspace</small></span><i>⌄</i></div>
+      <div class="nav-label">WORKSPACE</div>
+      <nav id="mainNav">
+        <button class="nav-item active" data-page="overview"><span class="nav-icon">▦</span>Overview</button>
+        <button class="nav-item" data-page="communications"><span class="nav-icon">◉</span>Communications <em class="nav-count">4</em></button>
+        <button class="nav-item" data-page="reports"><span class="nav-icon">▤</span>Reports</button>
+        <button class="nav-item" data-page="workforce"><span class="nav-icon">♙</span>Workforce</button>
+        <button class="nav-item" data-page="equipment"><span class="nav-icon">⚙</span>Equipment</button>
+        <button class="nav-item" data-page="safety"><span class="nav-icon">◇</span>Safety</button>
+        <button class="nav-item" data-page="approvals"><span class="nav-icon">✓</span>Approvals <em class="nav-count warning-count">3</em></button>
+        <div class="nav-label nav-label-spaced">PLANT CONTROL</div>
+        <button class="nav-item" data-page="shifts"><span class="nav-icon">◷</span>Shifts & handover</button>
+        <button class="nav-item" data-page="map"><span class="nav-icon">⌖</span>Plant map</button>
+        <button class="nav-item" data-page="history"><span class="nav-icon">↺</span>History & audit</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="demo-note"><span class="pulse"></span><div><b>Prototype mode</b><small>Sample data · No live system</small></div></div>
+        <div class="profile">
+          <div class="avatar avatar-dark">VK</div>
+          <div class="profile-info"><b>Vik Kumar</b><small>Plant Manager</small></div>
+          <button class="icon-button" id="profileMenu" title="Profile options">···</button>
+        </div>
+      </div>
+    </aside>
 
-    <!-- Floating Buttons over the Map -->
-    <div class="floating-btn-group">
-        <button class="ui-btn" onclick="toggleSidebar()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-            Menu
-        </button>
-        <button id="engineeringModeBtn" class="ui-btn map-mode-btn active" onclick="switchMapView('engineering')">Engineering Drawing</button>
-        <button id="satelliteModeBtn" class="ui-btn map-mode-btn" onclick="switchMapView('satellite')">Satellite View</button>
-        <button id="recenterBtn" class="ui-btn" onclick="recenterCurrentMap()">&#x26F6; Recenter</button>
-        <button class="ui-btn" onclick="toggleConnectionPanel()">↗ Connections</button>
-        <button class="ui-btn" onclick="toggleTransferPanel()">⇄ Transfer zones</button>
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu icon-button" id="mobileMenu" aria-label="Open navigation">☰</button>
+        <div class="breadcrumbs"><span>Plant Tracker</span><b>/</b><strong id="pageCrumb">Overview</strong></div>
+        <div class="top-actions">
+          <span class="live-indicator"><i></i> DEMO ENVIRONMENT</span>
+          <button class="icon-button notification-button" title="Notifications">♧<i></i></button>
+          <div class="top-date">FRI, 06 NOV 2026 <span>·</span> 10:42 AM</div>
+        </div>
+      </header>
+
+      <div class="page-wrap">
+        <section class="page active" id="page-overview">
+          <div class="page-heading">
+            <div><div class="eyebrow">PLANT OPERATIONS / LIVE VIEW</div><h1>Good morning, Vik <span class="wave">✳</span></h1><p>Here’s what’s happening across your plant today.</p></div>
+            <div class="heading-actions"><button class="btn btn-secondary" data-go="reports">＋ New report</button><button class="btn btn-primary" data-go="communications">Open communications <span>↗</span></button></div>
+          </div>
+          <div class="stats-grid">
+            <article class="stat-card"><div class="stat-top"><span>Plant readiness</span><span class="stat-icon green">◈</span></div><div class="stat-value">82<span>%</span></div><div class="stat-foot"><span class="status-dot green-dot"></span> 9 of 11 areas operational</div><div class="mini-progress"><i style="width:82%"></i></div></article>
+            <article class="stat-card"><div class="stat-top"><span>Active workforce</span><span class="stat-icon blue">♙</span></div><div class="stat-value">46<span>/52</span></div><div class="stat-foot"><span class="positive">+3</span> vs previous shift</div><div class="avatar-stack"><i>AS</i><i>RK</i><i>PM</i><i>+43</i></div></article>
+            <article class="stat-card"><div class="stat-top"><span>Equipment running</span><span class="stat-icon amber">⚙</span></div><div class="stat-value">38<span>/42</span></div><div class="stat-foot"><span class="status-dot amber-dot"></span> 2 stopped · 2 maintenance</div><div class="mini-progress amber-progress"><i style="width:90%"></i></div></article>
+            <article class="stat-card"><div class="stat-top"><span>Pending actions</span><span class="stat-icon red">⌁</span></div><div class="stat-value">07</div><div class="stat-foot"><span class="negative">3 approvals</span> · 4 reports to verify</div><div class="stat-link" data-go="approvals">Review pending actions ↗</div></article>
+          </div>
+          <div class="content-grid overview-grid">
+            <section class="panel area-panel">
+              <div class="panel-heading"><div><h2>Area status</h2><p>Operational condition by plant area</p></div><button class="text-button" data-go="map">View plant map ↗</button></div>
+              <div class="area-list">
+                <div class="area-row"><div class="area-symbol green-bg">CR</div><div class="area-main"><b>Crusher House</b><small>Floor 1–3 · 18 personnel</small></div><span class="status-pill status-good">Operational</span><span class="area-time">10:35 AM</span><span class="row-arrow">›</span></div>
+                <div class="area-row"><div class="area-symbol blue-bg">CV</div><div class="area-main"><b>Conveyor Gallery</b><small>Floor 1–2 · 12 personnel</small></div><span class="status-pill status-good">Operational</span><span class="area-time">10:21 AM</span><span class="row-arrow">›</span></div>
+                <div class="area-row"><div class="area-symbol amber-bg">EL</div><div class="area-main"><b>Electrical Room</b><small>Floor 1 · 6 personnel</small></div><span class="status-pill status-review">Under review</span><span class="area-time">10:18 AM</span><span class="row-arrow">›</span></div>
+                <div class="area-row"><div class="area-symbol red-bg">RM</div><div class="area-main"><b>Raw Material Yard</b><small>Ground · 10 personnel</small></div><span class="status-pill status-alert">Attention</span><span class="area-time">09:54 AM</span><span class="row-arrow">›</span></div>
+              </div>
+              <div class="panel-footer"><span>Last consolidated update <b>10:35 AM</b></span><span class="muted">Manager approval required for official status</span></div>
+            </section>
+            <section class="panel activity-panel">
+              <div class="panel-heading"><div><h2>Operational activity</h2><p>Latest reports and events</p></div><button class="icon-button">···</button></div>
+              <div class="timeline">
+                <div class="timeline-item"><i class="timeline-icon red-bg">!</i><div><b>Crusher 02 stoppage reported</b><p>Abnormal vibration · Crusher House</p><small>Operator · 10:31 AM</small></div><span class="timeline-tag red-text">Critical</span></div>
+                <div class="timeline-item"><i class="timeline-icon blue-bg">✓</i><div><b>Shift attendance verified</b><p>Crusher House · Shift A</p><small>Supervisor · 10:12 AM</small></div></div>
+                <div class="timeline-item"><i class="timeline-icon amber-bg">◇</i><div><b>PPE observation submitted</b><p>Conveyor Gallery · Floor 2</p><small>Safety officer · 09:48 AM</small></div></div>
+                <div class="timeline-item"><i class="timeline-icon green-bg">↗</i><div><b>Zone inspection completed</b><p>Crusher House · Floor 1</p><small>Supervisor · 09:25 AM</small></div></div>
+              </div>
+              <button class="panel-bottom-link" data-go="history">View all activity <span>↗</span></button>
+            </section>
+          </div>
+          <div class="bottom-grid">
+            <section class="panel"><div class="panel-heading"><div><h2>Shift overview</h2><p>Current deployment</p></div><button class="text-button" data-go="shifts">Manage shifts ↗</button></div><div class="shift-strip"><div><span class="shift-label">CURRENT SHIFT</span><b>Shift A</b><small>06:00 AM – 02:00 PM</small></div><div class="shift-metric"><b>46 / 52</b><small>Attendance</small></div><div class="shift-metric"><b>8 / 9</b><small>Reports received</small></div><div class="shift-progress"><div><i style="width:88%"></i></div><small>88% reporting complete</small></div></div></section>
+            <section class="panel approval-callout"><div class="callout-icon">✓</div><div><h2>Manager review required</h2><p>3 items are waiting for your approval.</p><button class="text-button" data-go="approvals">Open approval queue ↗</button></div><b class="callout-count">03</b></section>
+          </div>
+        </section>
+
+        <section class="page" id="page-communications">
+          <div class="page-heading compact-heading"><div><div class="eyebrow">TEAM COORDINATION</div><h1>Communications</h1><p>Official plant channels and operational conversations.</p></div><button class="btn btn-primary" id="newMessage">＋ New update</button></div>
+          <div class="messenger panel">
+            <aside class="chat-sidebar">
+              <div class="chat-sidebar-top"><div class="chat-tabs"><button class="selected">Channels</button><button>Direct</button></div><button class="icon-button" title="Search channels">⌕</button></div>
+              <div class="chat-search"><span>⌕</span><input id="channelSearch" placeholder="Search channels"></div>
+              <div class="channel-group-label">PLANT-WIDE</div>
+              <button class="channel-item selected" data-chat="announcements"><span class="channel-avatar purple-bg">↗</span><span class="channel-copy"><b>Plant announcements</b><small>Manager · Shift instructions published</small></span><time>10:20</time></button>
+              <div class="channel-group-label">AREA CHANNELS</div>
+              <button class="channel-item" data-chat="crusher"><span class="channel-avatar green-bg">CR</span><span class="channel-copy"><b>Crusher House</b><small>Rakesh: Crusher 02 vibration...</small></span><time>10:31</time><i class="unread">2</i></button>
+              <button class="channel-item" data-chat="conveyor"><span class="channel-avatar blue-bg">CV</span><span class="channel-copy"><b>Conveyor Gallery</b><small>PPE inspection completed</small></span><time>09:48</time></button>
+              <button class="channel-item" data-chat="electrical"><span class="channel-avatar amber-bg">EL</span><span class="channel-copy"><b>Electrical Room</b><small>Awaiting supervisor verification</small></span><time>09:15</time></button>
+              <div class="channel-group-label">SHIFT CHANNELS</div>
+              <button class="channel-item" data-chat="shift-a"><span class="channel-avatar slate-bg">A</span><span class="channel-copy"><b>Shift A · Operations</b><small>Handover checklist updated</small></span><time>08:55</time></button>
+              <button class="channel-item" data-chat="shift-b"><span class="channel-avatar slate-bg">B</span><span class="channel-copy"><b>Shift B · Handover</b><small>Incoming shift briefing</small></span><time>Yesterday</time></button>
+            </aside>
+            <section class="chat-main">
+              <div class="chat-header"><div class="channel-avatar purple-bg" id="chatAvatar">↗</div><div><b id="chatTitle">Plant announcements</b><small id="chatSubtitle">Official · Plant-wide · 52 members</small></div><div class="chat-header-actions"><button class="icon-button" title="Search">⌕</button><button class="icon-button" title="Channel details">ⓘ</button></div></div>
+              <div class="pinned-message"><span>▣</span><div><b>Pinned instruction</b><small id="pinnedText">All shift supervisors must submit area readiness before 01:30 PM.</small></div><button class="icon-button">×</button></div>
+              <div class="chat-stream" id="chatStream">
+                <div class="date-divider"><span>TODAY · 06 NOVEMBER</span></div>
+                <div class="message-row"><div class="avatar avatar-small purple-avatar">VK</div><div class="message-content"><div class="message-meta"><b>Vik Kumar <i>Plant Manager</i></b><time>09:05 AM</time></div><div class="bubble">Good morning team. Please ensure all area inspections and equipment status reports are submitted before shift handover.</div></div></div>
+                <div class="message-row"><div class="avatar avatar-small blue-avatar">AS</div><div class="message-content"><div class="message-meta"><b>Anil Sahu <i>Supervisor</i></b><time>09:22 AM</time></div><div class="bubble">Crusher House Floor 1 inspection completed. No new observations.</div><div class="report-chip"><span class="chip-icon">▤</span><span><b>Area inspection report</b><small>Crusher House · Floor 1</small></span><span class="chip-state">Submitted</span></div></div></div>
+                <div class="message-row"><div class="avatar avatar-small orange-avatar">RK</div><div class="message-content"><div class="message-meta"><b>Rakesh Kumar <i>Operator</i></b><time>10:31 AM</time></div><div class="bubble">Crusher 02 stopped at 10:25 due to abnormal vibration. Maintenance team informed.</div><div class="report-chip alert-chip"><span class="chip-icon">!</span><span><b>Equipment event · EQ-204</b><small>Crusher House · Immediate event</small></span><span class="chip-state">Needs review</span></div></div></div>
+              </div>
+              <div class="quick-actions"><span>QUICK REPORT</span><button data-quick="Equipment status">⚙ Equipment</button><button data-quick="Attendance">♙ Attendance</button><button data-quick="Safety observation">◇ Safety</button><button data-quick="Work progress">▤ Progress</button></div>
+              <form class="chat-composer" id="chatForm"><button type="button" class="icon-button" title="Attach file">＋</button><input id="chatInput" placeholder="Message this official channel..." autocomplete="off"><button type="button" class="icon-button" title="Emoji">☺</button><button class="send-button" aria-label="Send message">↑</button></form>
+              <div class="composer-note">Messages are part of the plant's operational record. Avoid sharing personal or sensitive information.</div>
+            </section>
+            <aside class="chat-context"><div class="context-head"><b>Channel details</b><button class="icon-button">···</button></div><div class="context-block"><div class="context-label">CHANNEL TYPE</div><span class="status-pill status-info">Official channel</span></div><div class="context-block"><div class="context-label">REPORTING STATUS</div><div class="context-stat"><b>8 / 9</b><small>Reports received</small></div><div class="mini-progress"><i style="width:88%"></i></div></div><div class="context-block"><div class="context-label">CHANNEL MEMBERS</div><div class="member-stack"><i>VK</i><i>AS</i><i>RK</i><i>PM</i><i>+48</i></div><small class="muted">52 assigned members</small></div><div class="context-block"><div class="context-label">RELATED AREA</div><b>Plant-wide</b><small class="muted">All operational areas</small><button class="text-button" data-go="reports">View related reports ↗</button></div></aside>
+          </div>
+        </section>
+
+        <section class="page" id="page-reports">
+          <div class="page-heading"><div><div class="eyebrow">OPERATIONAL DATA</div><h1>Reports</h1><p>Structured submissions and natural-language event reports.</p></div><button class="btn btn-primary" id="createReport">＋ Create report</button></div>
+          <div class="filter-row"><div class="filter-tabs"><button class="selected">All reports <b>24</b></button><button>Needs review <b>4</b></button><button>Verified <b>16</b></button><button>Escalated <b>4</b></button></div><select><option>All areas</option><option>Crusher House</option><option>Conveyor Gallery</option></select><select><option>Today</option><option>This week</option></select></div>
+          <div class="panel table-panel"><div class="panel-heading"><div><h2>Recent reports</h2><p>Latest operational submissions</p></div><span class="muted">24 records</span></div><div class="table-wrap"><table><thead><tr><th>REPORT ID</th><th>TYPE</th><th>AREA / ASSET</th><th>SUBMITTED BY</th><th>TIME</th><th>STATUS</th><th></th></tr></thead><tbody>
+            <tr><td class="mono">RPT-0264</td><td><span class="type-icon red-bg">!</span> Equipment event</td><td><b>Crusher House</b><small>Crusher 02</small></td><td>Rakesh Kumar<small>Operator</small></td><td>10:31 AM</td><td><span class="status-pill status-alert">Needs review</span></td><td>›</td></tr>
+            <tr><td class="mono">RPT-0263</td><td><span class="type-icon blue-bg">♙</span> Attendance</td><td><b>Crusher House</b><small>Shift A</small></td><td>Anil Sahu<small>Supervisor</small></td><td>10:12 AM</td><td><span class="status-pill status-good">Verified</span></td><td>›</td></tr>
+            <tr><td class="mono">RPT-0262</td><td><span class="type-icon amber-bg">◇</span> Safety observation</td><td><b>Conveyor Gallery</b><small>Floor 2</small></td><td>Priya Mohanty<small>Safety officer</small></td><td>09:48 AM</td><td><span class="status-pill status-review">In progress</span></td><td>›</td></tr>
+            <tr><td class="mono">RPT-0261</td><td><span class="type-icon green-bg">▤</span> Work progress</td><td><b>Crusher House</b><small>Floor 1</small></td><td>Anil Sahu<small>Supervisor</small></td><td>09:25 AM</td><td><span class="status-pill status-good">Verified</span></td><td>›</td></tr>
+            <tr><td class="mono">RPT-0260</td><td><span class="type-icon blue-bg">⚙</span> Equipment check</td><td><b>Electrical Room</b><small>Panel DB-04</small></td><td>Manoj Das<small>Operator</small></td><td>09:15 AM</td><td><span class="status-pill status-review">Pending</span></td><td>›</td></tr>
+          </tbody></table></div></div>
+          <div class="report-method-grid"><div class="panel method-card"><span class="method-icon blue-bg">☷</span><div><h3>Guided reporting</h3><p>Use structured steps, options and validation to submit consistent records.</p><button class="text-button" id="guidedReport">Start guided report ↗</button></div></div><div class="panel method-card"><span class="method-icon purple-bg">✳</span><div><h3>Natural-language reporting</h3><p>Describe an event in plain language. Review extracted details before submission.</p><button class="text-button" id="naturalReport">Try text report ↗</button></div></div></div>
+        </section>
+
+        <section class="page" id="page-workforce">
+          <div class="page-heading"><div><div class="eyebrow">PEOPLE & DEPLOYMENT</div><h1>Workforce</h1><p>Employee deployment, attendance and verification.</p></div><button class="btn btn-primary" id="addEmployee">＋ Add employee</button></div>
+          <div class="stats-grid three-stats"><article class="stat-card"><div class="stat-top"><span>Present today</span><span class="stat-icon green">♙</span></div><div class="stat-value">46<span>/52</span></div><div class="stat-foot">88.5% attendance</div></article><article class="stat-card"><div class="stat-top"><span>Awaiting verification</span><span class="stat-icon amber">◷</span></div><div class="stat-value">04</div><div class="stat-foot">Personal reports pending</div></article><article class="stat-card"><div class="stat-top"><span>Areas deployed</span><span class="stat-icon blue">⌖</span></div><div class="stat-value">06</div><div class="stat-foot">Across 3 active shifts</div></article></div>
+          <div class="panel table-panel"><div class="panel-heading"><div><h2>Employee deployment</h2><p>Sample employee records and assigned permissions</p></div><div class="table-tools"><input placeholder="Search employee"><select><option>All roles</option><option>Operator</option><option>Helper</option><option>Supervisor</option></select></div></div><div class="table-wrap"><table><thead><tr><th>EMPLOYEE</th><th>ROLE</th><th>AREA</th><th>SHIFT</th><th>ATTENDANCE</th><th>VERIFICATION</th></tr></thead><tbody>
+            <tr><td><div class="person-cell"><i class="avatar avatar-small blue-avatar">AS</i><span><b>Anil Sahu</b><small>EMP-0012</small></span></div></td><td>Supervisor</td><td>Crusher House</td><td>Shift A</td><td><span class="status-pill status-good">Present</span></td><td><span class="status-pill status-good">Verified</span></td></tr>
+            <tr><td><div class="person-cell"><i class="avatar avatar-small orange-avatar">RK</i><span><b>Rakesh Kumar</b><small>EMP-0024</small></span></div></td><td>Operator</td><td>Crusher House</td><td>Shift A</td><td><span class="status-pill status-good">Present</span></td><td><span class="status-pill status-good">Verified</span></td></tr>
+            <tr><td><div class="person-cell"><i class="avatar avatar-small purple-avatar">PM</i><span><b>Priya Mohanty</b><small>EMP-0031</small></span></div></td><td>Safety officer</td><td>Conveyor Gallery</td><td>Shift A</td><td><span class="status-pill status-good">Present</span></td><td><span class="status-pill status-review">Pending</span></td></tr>
+            <tr><td><div class="person-cell"><i class="avatar avatar-small green-avatar">MD</i><span><b>Manoj Das</b><small>EMP-0040</small></span></div></td><td>Operator</td><td>Electrical Room</td><td>Shift A</td><td><span class="status-pill status-good">Present</span></td><td><span class="status-pill status-review">Pending</span></td></tr>
+            <tr><td><div class="person-cell"><i class="avatar avatar-small slate-avatar">SB</i><span><b>Santosh Behera</b><small>EMP-0045</small></span></div></td><td>Helper</td><td>Raw Material Yard</td><td>Shift A</td><td><span class="status-pill status-alert">Not reported</span></td><td><span class="status-pill status-muted">Unverified</span></td></tr>
+          </tbody></table></div></div>
+        </section>
+
+        <section class="page" id="page-equipment">
+          <div class="page-heading"><div><div class="eyebrow">ASSET RELIABILITY</div><h1>Equipment monitoring</h1><p>Individual machine condition and floor-level summaries.</p></div><button class="btn btn-primary" id="equipmentCheck">＋ Record equipment check</button></div>
+          <div class="stats-grid"><article class="stat-card"><div class="stat-top"><span>Total registered</span><span class="stat-icon blue">⚙</span></div><div class="stat-value">42</div><div class="stat-foot">Across 6 plant areas</div></article><article class="stat-card"><div class="stat-top"><span>Running</span><span class="stat-icon green">↗</span></div><div class="stat-value">38</div><div class="stat-foot">90.4% availability</div></article><article class="stat-card"><div class="stat-top"><span>Stopped</span><span class="stat-icon red">Ⅱ</span></div><div class="stat-value">02</div><div class="stat-foot">1 critical event open</div></article><article class="stat-card"><div class="stat-top"><span>Maintenance</span><span class="stat-icon amber">⌁</span></div><div class="stat-value">02</div><div class="stat-foot">Scheduled / corrective</div></article></div>
+          <div class="panel table-panel"><div class="panel-heading"><div><h2>Equipment register</h2><p>Current individual asset condition</p></div><div class="table-tools"><input placeholder="Search equipment"><select><option>All statuses</option><option>Running</option><option>Stopped</option></select></div></div><div class="table-wrap"><table><thead><tr><th>ASSET ID</th><th>EQUIPMENT</th><th>AREA</th><th>STATUS</th><th>LAST CHECK</th><th>REPORTED CONDITION</th><th></th></tr></thead><tbody>
+            <tr><td class="mono">EQ-201</td><td><b>Crusher 01</b><small>Primary crusher</small></td><td>Crusher House</td><td><span class="status-pill status-good">Running</span></td><td>10:05 AM</td><td>Normal</td><td>›</td></tr>
+            <tr><td class="mono">EQ-204</td><td><b>Crusher 02</b><small>Secondary crusher</small></td><td>Crusher House</td><td><span class="status-pill status-alert">Stopped</span></td><td>10:31 AM</td><td><span class="red-text">Abnormal vibration</span></td><td>›</td></tr>
+            <tr><td class="mono">EQ-211</td><td><b>Conveyor CV-04</b><small>Belt conveyor</small></td><td>Conveyor Gallery</td><td><span class="status-pill status-good">Running</span></td><td>09:50 AM</td><td>Normal</td><td>›</td></tr>
+            <tr><td class="mono">EQ-302</td><td><b>Panel DB-04</b><small>Distribution panel</small></td><td>Electrical Room</td><td><span class="status-pill status-review">Maintenance</span></td><td>09:15 AM</td><td>Inspection ongoing</td><td>›</td></tr>
+          </tbody></table></div></div>
+          <div class="panel floor-summary"><div class="panel-heading"><div><h2>Floor-level summary</h2><p>Aggregated condition is indicative until verified</p></div><span class="status-pill status-review">Awaiting review</span></div><div class="floor-cards"><div><small>Crusher House · Floor 1</small><b>12 / 13 running</b><div class="mini-progress"><i style="width:92%"></i></div></div><div><small>Crusher House · Floor 2</small><b>8 / 8 running</b><div class="mini-progress"><i style="width:100%"></i></div></div><div><small>Conveyor Gallery · Floor 1</small><b>7 / 7 running</b><div class="mini-progress"><i style="width:100%"></i></div></div></div></div>
+        </section>
+
+        <section class="page" id="page-safety">
+          <div class="page-heading"><div><div class="eyebrow">RISK & COMPLIANCE</div><h1>Safety management</h1><p>Inspections, PPE observations and incident follow-up.</p></div><button class="btn btn-primary" id="safetyReport">＋ New observation</button></div>
+          <div class="stats-grid three-stats"><article class="stat-card"><div class="stat-top"><span>Open observations</span><span class="stat-icon amber">◇</span></div><div class="stat-value">06</div><div class="stat-foot">2 high priority</div></article><article class="stat-card"><div class="stat-top"><span>PPE compliance</span><span class="stat-icon green">✓</span></div><div class="stat-value">94<span>%</span></div><div class="stat-foot">Last verified 09:48 AM</div></article><article class="stat-card"><div class="stat-top"><span>Unresolved incidents</span><span class="stat-icon red">!</span></div><div class="stat-value">01</div><div class="stat-foot">Escalated to manager</div></article></div>
+          <div class="panel table-panel"><div class="panel-heading"><div><h2>Safety observations</h2><p>Open and recently resolved records</p></div><button class="text-button">View safety checklist ↗</button></div><div class="table-wrap"><table><thead><tr><th>REFERENCE</th><th>OBSERVATION</th><th>LOCATION</th><th>REPORTED BY</th><th>PRIORITY</th><th>STATUS</th></tr></thead><tbody>
+            <tr><td class="mono">SAFE-0081</td><td><b>PPE non-compliance</b><small>Eye protection not observed</small></td><td>Conveyor Gallery · F2</td><td>Priya Mohanty</td><td><span class="status-pill status-review">Medium</span></td><td><span class="status-pill status-review">In progress</span></td></tr>
+            <tr><td class="mono">SAFE-0080</td><td><b>Guarding inspection</b><small>Inspection requested</small></td><td>Crusher House · F1</td><td>Anil Sahu</td><td><span class="status-pill status-alert">High</span></td><td><span class="status-pill status-alert">Escalated</span></td></tr>
+            <tr><td class="mono">SAFE-0079</td><td><b>Access route obstruction</b><small>Material cleared</small></td><td>Raw Material Yard</td><td>Rakesh Kumar</td><td><span class="status-pill status-muted">Low</span></td><td><span class="status-pill status-good">Resolved</span></td></tr>
+          </tbody></table></div></div>
+          <div class="notice-box"><span>ⓘ</span><div><b>Privacy by design</b><p>Worker condition and welfare records are restricted to authorized personnel. They are not displayed in public area channels or map labels.</p></div></div>
+        </section>
+
+        <section class="page" id="page-approvals">
+          <div class="page-heading"><div><div class="eyebrow">MANAGER CONTROL</div><h1>Approvals</h1><p>Final operational decisions remain with the authorized manager.</p></div><span class="status-pill status-review">3 awaiting your review</span></div>
+          <div class="approval-banner"><div class="approval-banner-icon">✓</div><div><b>Reports, verification and approval are separate steps.</b><p>Supervisor verification is a recommendation. Only an authorized manager can confirm the official area status.</p></div></div>
+          <div class="approval-list">
+            <article class="approval-card"><div class="approval-card-top"><span class="status-pill status-alert">Critical event</span><span class="mono">APR-0142</span></div><h3>Crusher House · Equipment stoppage</h3><p>Crusher 02 stopped due to abnormal vibration. Operator report received; supervisor verification pending.</p><div class="approval-meta"><span>Submitted by <b>Rakesh Kumar</b></span><span>10:31 AM</span></div><div class="approval-actions"><button class="btn btn-secondary" data-action="clarify">Request clarification</button><button class="btn btn-secondary" data-action="reject">Reject</button><button class="btn btn-primary" data-action="approve">Acknowledge & escalate</button></div></article>
+            <article class="approval-card"><div class="approval-card-top"><span class="status-pill status-review">Area status review</span><span class="mono">APR-0141</span></div><h3>Electrical Room · Floor 1</h3><p>Supervisor recommends operational status. One equipment inspection remains pending.</p><div class="approval-meta"><span>Verified by <b>Manoj Das</b></span><span>10:18 AM</span></div><div class="approval-actions"><button class="btn btn-secondary" data-action="clarify">Request clarification</button><button class="btn btn-secondary" data-action="reject">Reject</button><button class="btn btn-primary" data-action="approve">Approve status</button></div></article>
+            <article class="approval-card"><div class="approval-card-top"><span class="status-pill status-review">Shift handover</span><span class="mono">APR-0140</span></div><h3>Conveyor Gallery · Shift A closure</h3><p>Outgoing supervisor submitted handover with one maintenance item carried forward.</p><div class="approval-meta"><span>Submitted by <b>Anil Sahu</b></span><span>09:55 AM</span></div><div class="approval-actions"><button class="btn btn-secondary" data-action="clarify">Request clarification</button><button class="btn btn-secondary" data-action="reject">Reject</button><button class="btn btn-primary" data-action="approve">Approve handover</button></div></article>
+          </div>
+        </section>
+
+        <section class="page" id="page-shifts">
+          <div class="page-heading"><div><div class="eyebrow">WORK PLANNING</div><h1>Shifts & handover</h1><p>Configurable shift patterns, reporting intervals and shift closure.</p></div><button class="btn btn-primary" id="configureShifts">⚙ Configure shifts</button></div>
+          <div class="shift-schedule"><div class="shift-card active-shift"><span class="shift-label">ACTIVE NOW</span><h2>Shift A</h2><b>06:00 AM – 02:00 PM</b><div class="shift-track"><i style="width:58%"></i></div><div class="shift-card-foot"><span>46 / 52 present</span><span>58% elapsed</span></div></div><div class="shift-card"><span class="shift-label">UPCOMING</span><h2>Shift B</h2><b>02:00 PM – 10:00 PM</b><div class="shift-track"><i style="width:0%"></i></div><div class="shift-card-foot"><span>Deployment pending</span><span>Starts in 3h 18m</span></div></div><div class="shift-card"><span class="shift-label">SCHEDULED</span><h2>Shift C</h2><b>10:00 PM – 06:00 AM</b><div class="shift-track"><i style="width:0%"></i></div><div class="shift-card-foot"><span>Deployment pending</span><span>8 hours</span></div></div></div>
+          <div class="content-grid"><section class="panel"><div class="panel-heading"><div><h2>Reporting schedule</h2><p>Configured intervals for Shift A</p></div><button class="text-button">Edit schedule</button></div><div class="schedule-list"><div><span>06:15 AM</span><b>Shift opening & attendance</b><span class="status-pill status-good">Complete</span></div><div><span>08:00 AM</span><b>First operational update</b><span class="status-pill status-good">Complete</span></div><div><span>10:00 AM</span><b>Periodic equipment update</b><span class="status-pill status-review">Received</span></div><div><span>12:00 PM</span><b>Safety & work progress</b><span class="status-pill status-muted">Upcoming</span></div><div><span>01:30 PM</span><b>Area readiness & handover</b><span class="status-pill status-muted">Upcoming</span></div></div></section><section class="panel"><div class="panel-heading"><div><h2>Open handover items</h2><p>Carry forward to next shift</p></div><span class="status-pill status-alert">2 open</span></div><div class="handover-item"><i class="red-bg">!</i><div><b>Crusher 02 vibration investigation</b><small>Crusher House · Maintenance follow-up</small></div></div><div class="handover-item"><i class="amber-bg">◇</i><div><b>DB-04 panel inspection</b><small>Electrical Room · In progress</small></div></div><button class="btn btn-secondary btn-full" id="handoverBtn">Review handover checklist</button></section></div>
+        </section>
+
+        <section class="page" id="page-map">
+          <div class="page-heading"><div><div class="eyebrow">SPATIAL OPERATIONS</div><h1>Plant map</h1><p>Illustrative zone and equipment relationship view.</p></div><div class="heading-actions"><button class="btn btn-secondary">Engineering drawing</button><button class="btn btn-primary">Satellite view ↗</button></div></div>
+          <div class="map-layout"><div class="map-canvas"><div class="map-grid"></div><div class="map-title"><b>ANGUL PLANT · OVERVIEW</b><small>Illustrative spatial layout · not a surveyed map</small></div><div class="map-zone zone-crusher"><b>Crusher House</b><small>9 zones · 1 alert</small><span class="map-marker marker-red">!</span></div><div class="map-zone zone-conveyor"><b>Conveyor Gallery</b><small>6 zones · Operational</small></div><div class="map-zone zone-electrical"><b>Electrical Room</b><small>3 zones · Under review</small></div><div class="map-zone zone-yard"><b>Raw Material Yard</b><small>4 zones · Attention</small></div><div class="map-route"></div><div class="map-legend"><span><i class="green-dot"></i> Operational</span><span><i class="amber-dot"></i> Under review</span><span><i class="red-dot"></i> Attention</span></div><div class="map-zoom"><button>＋</button><button>−</button></div></div><aside class="panel map-details"><div class="panel-heading"><div><h2>Selected area</h2><p>Crusher House</p></div><span class="status-pill status-review">Review</span></div><div class="detail-stat"><small>FLOORS</small><b>3</b></div><div class="detail-stat"><small>PERSONNEL</small><b>18 assigned</b></div><div class="detail-stat"><small>EQUIPMENT</small><b>12 registered · 11 running</b></div><div class="detail-stat"><small>LAST REPORT</small><b>10:31 AM · RPT-0264</b></div><div class="notice-box compact-notice"><span>!</span><div><b>Manager review pending</b><p>Equipment stoppage prevents automatic area clearance.</p></div></div><button class="btn btn-secondary btn-full" data-go="reports">Open area reports</button></aside></div>
+        </section>
+
+        <section class="page" id="page-history">
+          <div class="page-heading"><div><div class="eyebrow">TRACEABILITY</div><h1>History & audit</h1><p>Chronological records of messages, reports and status decisions.</p></div><button class="btn btn-secondary" id="exportHistory">↓ Export sample log</button></div>
+          <div class="filter-row"><div class="filter-tabs"><button class="selected">All activity</button><button>Reports</button><button>Approvals</button><button>Messages</button><button>System events</button></div><select><option>Today</option><option>Last 7 days</option></select></div>
+          <div class="panel table-panel"><div class="panel-heading"><div><h2>Audit trail</h2><p>Sample immutable-event timeline for prototype illustration</p></div></div><div class="table-wrap"><table><thead><tr><th>TIMESTAMP</th><th>ACTIVITY</th><th>ACTOR</th><th>REFERENCE</th><th>RESULT</th></tr></thead><tbody>
+            <tr><td>10:31:42 AM</td><td><b>Equipment event submitted</b><small>Crusher 02 · Abnormal vibration</small></td><td>Rakesh Kumar</td><td class="mono">RPT-0264</td><td><span class="status-pill status-review">Recorded</span></td></tr>
+            <tr><td>10:12:08 AM</td><td><b>Attendance verified</b><small>Crusher House · Shift A</small></td><td>Anil Sahu</td><td class="mono">ATT-0118</td><td><span class="status-pill status-good">Verified</span></td></tr>
+            <tr><td>09:48:19 AM</td><td><b>Safety observation created</b><small>Conveyor Gallery · Floor 2</small></td><td>Priya Mohanty</td><td class="mono">SAFE-0081</td><td><span class="status-pill status-review">Open</span></td></tr>
+            <tr><td>09:25:51 AM</td><td><b>Zone inspection verified</b><small>Crusher House · Floor 1</small></td><td>Anil Sahu</td><td class="mono">RPT-0261</td><td><span class="status-pill status-good">Verified</span></td></tr>
+            <tr><td>09:05:03 AM</td><td><b>Plant announcement published</b><small>Shift reporting instruction</small></td><td>Vik Kumar</td><td class="mono">MSG-0812</td><td><span class="status-pill status-info">Published</span></td></tr>
+          </tbody></table></div></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-head"><div><div class="eyebrow">PROTOTYPE INTERACTION</div><h2 id="modalTitle">New report</h2></div><button class="icon-button" id="closeModal">×</button></div>
+      <div id="modalBody"></div>
+      <div class="modal-actions"><button class="btn btn-secondary" id="cancelModal">Cancel</button><button class="btn btn-primary" id="submitModal">Save demonstration</button></div>
     </div>
-
-    <!-- The Slide-In Menu -->
-    <div id="sidebar">
-        <h2>1. Machine Settings <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button></h2>
-        <div class="control-panel">
-            <label>Select Drawn Zone</label>
-            <select id="settingZoneSelect" onchange="loadZoneSettings()"></select>
-            
-            <label>Assign Equipment Type/Symbol</label>
-            <select id="zoneSymbolSelect">
-                <!-- Industrial symbols using emoji fonts for universal browser support without external assets -->
-                <option value="">-- None --</option>
-                <option value="⚙️">⚙️ Motor / Gearbox</option>
-                <option value="🏭">🏭 General Plant Area</option>
-                <option value="🔥">🔥 Furnace / Boiler</option>
-                <option value="🚰">🚰 Valve / Washery</option>
-                <option value="🚚">🚚 Truck Loading</option>
-                <option value="⚡">⚡ Electrical Substation</option>
-                <option value="⚖️">⚖️ Weighbridge / Scale</option>
-                <option value="🌡️">🌡️ Temperature Control</option>
-                <option value="🏗️">🏗️ Crane / Heavy Lift</option>
-                <option value="🔄">🔄 Conveyor System</option>
-            </select>
-
-            <label>Operating Status</label>
-            <select id="zoneStatusSelect">
-                <option value="running">🟢 Running (Animated)</option>
-                <option value="maintenance">🟡 Maintenance (Standby)</option>
-                <option value="offline">🔴 Offline (Stopped)</option>
-            </select>
-            <button class="action-btn" onclick="updateZoneStatus()" style="background:#28a745; color:white;">Update Machine Data</button>
-        </div>
-
-        <h2>2. Assign Manpower</h2>
-        <div class="control-panel">
-            <label>Worker Name</label>
-            <input type="text" id="workerName" placeholder="e.g. Ramesh Kumar">
-            
-            <label>Designation / Role</label>
-            <select id="workerRole">
-                <option value="Operator">⚙️ Operator</option>
-                <option value="Technician">🔧 Technician</option>
-                <option value="Supervisor">📋 Supervisor</option>
-                <option value="Safety">🛡️ Safety Officer</option>
-            </select>
-            
-            <label>Assign To Location</label>
-            <select id="assignZoneSelect"></select>
-            
-            <button class="action-btn" onclick="addWorker()">Assign Worker</button>
-        </div>
-        
-        <h2>3. Active Workforce</h2>
-        <div id="workerList"></div>
-        
-        <button class="action-btn danger-btn" onclick="clearData()" style="margin-top:40px;">⚠️ Factory Reset Database</button>
-    </div>
-
-    <div id="map-container">
-        <div id="map"></div>
-        <div id="satellite-map"></div>
-        <div id="satellitePanel" class="satellite-panel">
-            <button class="panel-close" type="button" aria-label="Close plant location panel" onclick="closeSatellitePanel()">×</button>
-            <strong>Plant location</strong>
-            <p>Enter the plant's latitude and longitude, or click directly on the satellite map to place the site marker. The initial view is only a general India view, not your plant location.</p>
-            <div class="coordinate-row">
-                <input id="plantLatitude" type="number" step="any" placeholder="Latitude">
-                <input id="plantLongitude" type="number" step="any" placeholder="Longitude">
-            </div>
-            <button onclick="goToPlantLocation()">Go to plant location</button>
-            <p id="plantLocationStatus">No plant location saved yet.</p>
-        </div>
-        <div id="transferPanel" class="connection-panel transfer-panel">
-            <strong>Transfer engineering zones to satellite</strong>
-            <p>Register the engineering drawing to the satellite map using FOUR matching physical landmarks. Then transfer a zone using the saved registration. Use widely spaced points around the plant.</p>
-            <label for="transferZoneSelect">Engineering zone to transfer</label>
-            <select id="transferZoneSelect"><option value="">-- Select engineering zone --</option></select>
-            <div class="connection-actions">
-                <button class="primary" onclick="beginZoneAlignment()">Register maps (4 points)</button>
-                <button onclick="transferSelectedZone()" id="transferZoneBtn" disabled>Transfer selected zone</button>
-                <button onclick="cancelZoneAlignment()">Cancel alignment</button>
-                <button onclick="toggleTransferPanel()">Close</button>
-            </div>
-            <p id="transferStatus" class="connection-status">No verified 4-point registration. Linked labels alone do NOT align map geometry.</p>
-            <div class="zone-link-panel">
-                <strong>Link independently drawn zones</strong>
-                <p><b>Important:</b> Linking shares status and personnel only. It does NOT move or align the geometry. For spatial alignment, use Register maps and Transfer selected zone above.</p>
-                <label for="linkEngineeringZone">Engineering drawing zone</label>
-                <select id="linkEngineeringZone"></select>
-                <label for="linkSatelliteZone">Satellite view zone</label>
-                <select id="linkSatelliteZone"></select>
-                <button type="button" onclick="linkSelectedZones()">Link these zones</button>
-                <button type="button" style="margin-top:7px;background:#30384b;color:#e8f4ff" onclick="unlinkSelectedZones()">Remove link</button>
-                <p id="zoneLinkStatus" class="link-status">No zones linked yet.</p>
-            </div>
-        </div>
-        <div id="satelliteAttributionNote" class="satellite-attribution-note" style="display:none">Satellite imagery © Esri and its data providers</div>
-        <div id="connectionPanel" class="connection-panel">
-            <strong>Flexible connecting lines</strong>
-            <p>Satellite now has its own editable site zones, equipment markers, polygons, rectangles and polylines. Use the map drawing toolbar to add, edit or delete them. Connections remain independently editable on each map.</p>
-            <div class="connection-actions">
-                <button class="primary" id="drawConnectionBtn" onclick="startConnectionDrawing()">＋ Draw route</button>
-                <button id="finishConnectionBtn" onclick="finishConnectionDrawing()" disabled>Finish route</button>
-                <button id="cancelConnectionBtn" onclick="cancelConnectionDrawing()" disabled>Cancel</button>
-                <button id="editConnectionsBtn" onclick="toggleConnectionEditing()">Edit help</button>
-            </div>
-            <p id="connectionStatus" class="connection-status">Ready. Current map: Engineering drawing.</p>
-            <p>Each route can have its own name, direction and geometry. Equipment linking by ID can be added in the next database phase.</p>
-        </div>
-    </div>
-    
-    <script>
-        let currentMapView = 'engineering';
-        let satelliteMap = null;
-        let plantSiteMarker = null;
-        let plantSite = JSON.parse(localStorage.getItem('plant_site_location_v1') || 'null');
-        let connectionRoutes = JSON.parse(localStorage.getItem('plant_connection_routes_v1') || '[]');
-        let connectionDrawing = false;
-        let connectionEditing = false;
-        let pendingConnectionPoints = [];
-        let engineeringConnectionLayer = null;
-        let satelliteConnectionLayer = null;
-        let engineeringEditControl = null;
-        let satelliteEditControl = null;
-        let satelliteZones = JSON.parse(localStorage.getItem('plant_satellite_zones_v1') || '[]');
-        let satelliteDrawnItems = null;
-        let satelliteZoneBadgeMarkers = {};
-        let satelliteClusterMarkers = [];
-        let satelliteDrawControl = null;
-        let zoneAlignment = { active:false, phase:'source', pairs:[], pendingSource:null };
-        // Only accept the new four-control-point projective transform.
-        // Older three-point affine transforms are intentionally ignored because
-        // they can produce large positional errors over a plant-sized drawing.
-        let zoneAlignmentTransform = (() => {
-            try {
-                const saved = JSON.parse(localStorage.getItem('plant_zone_alignment_v1') || 'null');
-                return saved && saved.version === 2 && Array.isArray(saved.h) && saved.h.length === 8 ? saved : null;
-            } catch (_) { return null; }
-        })();
-        let satellitePanelDismissed = false;
-        document.addEventListener('DOMContentLoaded', () => { const b=document.getElementById('transferZoneBtn'); if (b) b.disabled = !(zoneAlignmentTransform && zoneAlignmentTransform.version===2); });
-        let plantLocationPicking = false;
-
-        function toggleSidebar() {
-            document.body.classList.toggle('sidebar-closed');
-            setTimeout(() => { map.invalidateSize(); if (satelliteMap) satelliteMap.invalidateSize(); }, 300);
-        }
-
-        function isValidPlantSite(site) {
-            return !!site && Number.isFinite(Number(site.lat)) && Number.isFinite(Number(site.lng)) &&
-                Number(site.lat) >= -90 && Number(site.lat) <= 90 && Number(site.lng) >= -180 && Number(site.lng) <= 180;
-        }
-        function readSavedSatelliteViewport() {
-            try {
-                const v = JSON.parse(localStorage.getItem('plant_satellite_viewport_v1') || 'null');
-                if (!v || !Array.isArray(v.center) || v.center.length !== 2 || !Number.isFinite(v.zoom)) return null;
-                const lat=Number(v.center[0]), lng=Number(v.center[1]);
-                if (lat < -90 || lat > 90 || lng < -180 || lng > 180 || v.zoom < 1 || v.zoom > 19) return null;
-                return { center:[lat,lng], zoom:Math.max(2,Math.min(19,v.zoom)) };
-            } catch (_) { return null; }
-        }
-        function saveSatelliteViewport() {
-            if (!satelliteMap || !satelliteMap.getCenter()) return;
-            const c=satelliteMap.getCenter();
-            localStorage.setItem('plant_satellite_viewport_v1', JSON.stringify({center:[c.lat,c.lng],zoom:satelliteMap.getZoom()}));
-        }
-        function getSatelliteZonesBounds() {
-            if (!satelliteZones || !satelliteZones.length) return null;
-            const points=[];
-            satelliteZones.forEach(z=>{
-                if (z.type === 'marker' && z.latlng && Number.isFinite(Number(z.latlng.lat)) && Number.isFinite(Number(z.latlng.lng))) points.push([Number(z.latlng.lat),Number(z.latlng.lng)]);
-                else if (z.latlngs) {
-                    const flatten=a=>Array.isArray(a) ? a.forEach(flatten) : (a && Number.isFinite(Number(a.lat)) && Number.isFinite(Number(a.lng)) ? points.push([Number(a.lat),Number(a.lng)]) : null);
-                    flatten(z.latlngs);
-                }
-            });
-            return points.length ? L.latLngBounds(points) : null;
-        }
-
-        function initializeSatelliteMap() {
-            if (satelliteMap) return;
-            satelliteMap = L.map('satellite-map', { zoomControl: true, preferCanvas: true }).setView([20.5937, 78.9629], 5);
-            // Restore the last useful map viewport. If none exists, center on the saved plant
-            // reference; otherwise fit the saved satellite zones instead of leaving the user
-            // at the India-wide default view.
-            const savedViewport = readSavedSatelliteViewport();
-            if (savedViewport) {
-                satelliteMap.setView(savedViewport.center, savedViewport.zoom, { animate:false });
-            } else if (isValidPlantSite(plantSite)) {
-                satelliteMap.setView([plantSite.lat, plantSite.lng], 17, { animate:false });
-            } else if (satelliteZones.length) {
-                const zoneBounds = getSatelliteZonesBounds();
-                if (zoneBounds && zoneBounds.isValid()) satelliteMap.fitBounds(zoneBounds, { padding:[36,36], maxZoom:17, animate:false });
-            }
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 19,
-                attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
-            }).addTo(satelliteMap);
-            satelliteConnectionLayer = new L.FeatureGroup().addTo(satelliteMap);
-            satelliteDrawnItems = new L.FeatureGroup().addTo(satelliteMap);
-            renderConnectionRoutes();
-            satelliteMap.on('click', function (event) {
-                if (zoneAlignment.active && currentMapView === 'satellite') { captureSatelliteAlignmentPoint(event.latlng); return; }
-                if (connectionDrawing && currentMapView === 'satellite') { addConnectionPoint(event.latlng); return; }
-                if (plantLocationPicking) {
-                    setPlantSite(event.latlng.lat, event.latlng.lng, true);
-                    plantLocationPicking = false;
-                    const pickBtn=document.getElementById('pickPlantLocationBtn');
-                    if(pickBtn) pickBtn.textContent='Pick on map';
-                }
-            });
-            satelliteEditControl = new L.Control.Draw({ draw:false, edit:{ featureGroup:satelliteConnectionLayer, remove:false } });
-            satelliteMap.addControl(satelliteEditControl);
-            satelliteDrawControl = new L.Control.Draw({
-                position:'topleft',
-                draw:{ polygon:{shapeOptions:{color:'#4da8da',weight:2,fillOpacity:.2}}, rectangle:{shapeOptions:{color:'#4da8da',weight:2,fillOpacity:.2}}, polyline:{shapeOptions:{color:'#00ff00',weight:4,dashArray:'10,14'}}, marker:true, circle:false, circlemarker:false },
-                edit:{ featureGroup:satelliteDrawnItems, remove:true }
-            });
-            satelliteMap.addControl(satelliteDrawControl);
-            satelliteMap.on('zoomend moveend', function(){
-                layoutSatelliteBadges(); updateSatelliteBadgeScale();
-                saveSatelliteViewport();
-            });
-            satelliteMap.on(L.Draw.Event.CREATED, onSatelliteZoneCreated);
-            satelliteMap.on(L.Draw.Event.EDITED, onSatelliteZonesEdited);
-            satelliteMap.on(L.Draw.Event.DELETED, onSatelliteZonesDeleted);
-            satelliteMap.on(L.Draw.Event.EDITED, persistEditedConnections);
-            // Restore persisted satellite geometry after the map and edit feature group exist.
-            renderSatelliteZones();
-            renderConnectionRoutes();
-            if (plantSite && Number.isFinite(plantSite.lat) && Number.isFinite(plantSite.lng)) {
-                document.getElementById('plantLatitude').value = plantSite.lat;
-                document.getElementById('plantLongitude').value = plantSite.lng;
-                placePlantMarker(plantSite.lat, plantSite.lng);
-                document.getElementById('plantLocationStatus').textContent = 'Saved plant location: ' + plantSite.lat.toFixed(6) + ', ' + plantSite.lng.toFixed(6);
-                if (!savedViewport) satelliteMap.setView([plantSite.lat, plantSite.lng], 17, { animate:false });
-            }
-        }
-
-        function switchMapView(view) {
-            currentMapView = view;
-            const engineering = view === 'engineering';
-            document.getElementById('map').style.display = engineering ? 'block' : 'none';
-            document.getElementById('satellite-map').style.display = engineering ? 'none' : 'block';
-            document.getElementById('satellitePanel').classList.toggle('visible', !engineering && !satellitePanelDismissed);
-            document.getElementById('satelliteAttributionNote').style.display = engineering ? 'none' : 'block';
-            document.getElementById('engineeringModeBtn').classList.toggle('active', engineering);
-            document.getElementById('satelliteModeBtn').classList.toggle('active', !engineering);
-            if (!engineering) initializeSatelliteMap();
-            updateConnectionStatus();
-            setTimeout(() => {
-                if (engineering) map.invalidateSize();
-                else {
-                    satelliteMap.invalidateSize();
-                    renderSatelliteZones();
-                    renderConnectionRoutes();
-                    updateSatelliteBadgeScale();
-                }
-            }, 180);
-        }
-
-        function recenterCurrentMap() {
-            if (currentMapView === 'engineering') map.fitBounds(bounds);
-            else if (satelliteMap) {
-                if (isValidPlantSite(plantSite)) satelliteMap.setView([plantSite.lat, plantSite.lng], 17);
-                else {
-                    const b=getSatelliteZonesBounds();
-                    if (b && b.isValid()) satelliteMap.fitBounds(b,{padding:[36,36],maxZoom:17});
-                    else satelliteMap.setView([20.5937,78.9629],5);
-                }
-            }
-        }
-
-        function placePlantMarker(lat, lng) {
-            if (!satelliteMap) return;
-            if (plantSiteMarker) satelliteMap.removeLayer(plantSiteMarker);
-            plantSiteMarker = L.marker([lat, lng]).addTo(satelliteMap).bindPopup('<strong>Plant site reference</strong><br>Confirm this position before using it operationally.').openPopup();
-        }
-
-        function setPlantSite(lat, lng, fromMapClick) {
-            plantSite = { lat: Number(lat), lng: Number(lng) };
-            localStorage.setItem('plant_site_location_v1', JSON.stringify(plantSite));
-            document.getElementById('plantLatitude').value = plantSite.lat.toFixed(6);
-            document.getElementById('plantLongitude').value = plantSite.lng.toFixed(6);
-            document.getElementById('plantLocationStatus').textContent = 'Saved plant location: ' + plantSite.lat.toFixed(6) + ', ' + plantSite.lng.toFixed(6);
-            placePlantMarker(plantSite.lat, plantSite.lng);
-            if (fromMapClick) {
-                satellitePanelDismissed = true;
-                document.getElementById('satellitePanel').classList.remove('visible');
-                satelliteMap.setView([plantSite.lat, plantSite.lng], Math.max(satelliteMap.getZoom(), 16));
-            }
-        }
-
-        function goToPlantLocation() {
-            const lat = Number(document.getElementById('plantLatitude').value);
-            const lng = Number(document.getElementById('plantLongitude').value);
-            if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-                alert('Enter a valid latitude (-90 to 90) and longitude (-180 to 180).');
-                return;
-            }
-            setPlantSite(lat, lng, false);
-            satelliteMap.setView([lat, lng], 17);
-            closeSatellitePanel();
-        }
-
-        function startPlantLocationPick() {
-            plantLocationPicking=true;
-            document.getElementById('plantLocationStatus').textContent='Tap the exact plant reference point on the map.';
-            document.getElementById('pickPlantLocationBtn').textContent='Tap map to place…';
-            document.getElementById('satellitePanel').classList.remove('visible');
-        }
-        function closeSatellitePanel() {
-            satellitePanelDismissed = true;
-            document.getElementById('satellitePanel').classList.remove('visible');
-        }
-
-        function toggleTransferPanel() {
-            document.getElementById('connectionPanel').classList.remove('visible');
-            document.getElementById('satellitePanel').classList.remove('visible');
-            document.getElementById('transferPanel').classList.toggle('visible');
-            refreshTransferZoneOptions();
-            refreshZoneLinkOptions();
-        }
-
-        function refreshTransferZoneOptions() {
-            const select = document.getElementById('transferZoneSelect');
-            if (!select) return;
-            const previous = select.value;
-            select.innerHTML = '<option value="">-- Select engineering zone --</option>';
-            zones.forEach(z => { const opt=document.createElement('option'); opt.value=z.id; opt.textContent=(z.symbol ? z.symbol+' ' : '')+z.name+' ('+z.type+')'; select.appendChild(opt); });
-            if (zones.some(z=>z.id===previous)) select.value=previous;
-        }
-
-        function refreshZoneLinkOptions() {
-            const eng=document.getElementById('linkEngineeringZone');
-            const sat=document.getElementById('linkSatelliteZone');
-            if (!eng || !sat) return;
-            const oldE=eng.value, oldS=sat.value;
-            eng.innerHTML='<option value="">-- Choose engineering zone --</option>';
-            sat.innerHTML='<option value="">-- Choose satellite zone --</option>';
-            zones.forEach(z=>{const o=document.createElement('option');o.value=z.id;o.textContent=z.name+' ('+z.type+')';eng.appendChild(o);});
-            satelliteZones.forEach(z=>{const o=document.createElement('option');o.value=z.id;o.textContent=z.name+' ('+z.type+')';sat.appendChild(o);});
-            if (zones.some(z=>z.id===oldE)) eng.value=oldE;
-            if (satelliteZones.some(z=>z.id===oldS)) sat.value=oldS;
-            showZoneLinkStatus();
-        }
-        function showZoneLinkStatus(message) {
-            const out=document.getElementById('zoneLinkStatus');
-            if (message) { out.textContent=message; return; }
-            const e=document.getElementById('linkEngineeringZone')?.value;
-            const s=document.getElementById('linkSatelliteZone')?.value;
-            const ez=zones.find(z=>z.id===e), sz=satelliteZones.find(z=>z.id===s);
-            if (ez?.linkGroupId && sz?.linkGroupId===ez.linkGroupId) out.textContent='These two zones are linked. Shared ID: '+ez.linkGroupId;
-            else out.textContent='Choose one zone from each map, then link them.';
-        }
-        function linkSelectedZones() {
-            const eid=document.getElementById('linkEngineeringZone').value;
-            const sid=document.getElementById('linkSatelliteZone').value;
-            const ez=zones.find(z=>z.id===eid), sz=satelliteZones.find(z=>z.id===sid);
-            if (!ez || !sz) { showZoneLinkStatus('Select one engineering zone and one satellite zone.'); return; }
-            // Enforce one engineering zone <-> one satellite zone per logical pair.
-            const previousGroupIds = [ez.linkGroupId, sz.linkGroupId].filter(Boolean);
-            previousGroupIds.forEach(oldGroup => {
-                [...zones, ...satelliteZones].forEach(item => {
-                    if (item.linkGroupId === oldGroup) delete item.linkGroupId;
-                });
-            });
-            const group='pair_'+Date.now();
-            ez.linkGroupId=group; sz.linkGroupId=group;
-            localStorage.setItem('plant_zones_v4',JSON.stringify(zones));
-            localStorage.setItem('plant_satellite_zones_v1',JSON.stringify(satelliteZones));
-            saveToDatabase();
-            refreshZoneLinkOptions();
-            document.getElementById('linkEngineeringZone').value=eid;
-            document.getElementById('linkSatelliteZone').value=sid;
-            showZoneLinkStatus('Linked successfully. Both shapes remain independently editable; equipment identity and future status reporting can refer to this shared link.');
-        }
-        function unlinkSelectedZones() {
-            const eid=document.getElementById('linkEngineeringZone').value;
-            const sid=document.getElementById('linkSatelliteZone').value;
-            const ez=zones.find(z=>z.id===eid), sz=satelliteZones.find(z=>z.id===sid);
-            if (!ez || !sz || !ez.linkGroupId || ez.linkGroupId!==sz.linkGroupId) {
-                showZoneLinkStatus('The selected zones are not linked to each other.'); return;
-            }
-            delete ez.linkGroupId; delete sz.linkGroupId;
-            localStorage.setItem('plant_zones_v4',JSON.stringify(zones));
-            localStorage.setItem('plant_satellite_zones_v1',JSON.stringify(satelliteZones));
-            saveToDatabase(); refreshZoneLinkOptions();
-            showZoneLinkStatus('Link removed. Neither geometry was deleted.');
-        }
-
-        function beginZoneAlignment() {
-            if (!satelliteMap) initializeSatelliteMap();
-            zoneAlignment = {active:true, phase:'source', pairs:[], pendingSource:null};
-            document.getElementById('transferStatus').textContent =
-                'Registration 1/4: tap a clear, permanent landmark on the engineering drawing. Then tap the SAME physical landmark in Satellite View.';
-            switchMapView('engineering');
-        }
-
-        function captureEngineeringAlignmentPoint(latlng) {
-            if (!zoneAlignment.active || currentMapView !== 'engineering' || zoneAlignment.phase !== 'source') return false;
-            zoneAlignment.pendingSource = [Number(latlng.lng), Number(latlng.lat)];
-            zoneAlignment.phase = 'target';
-            const n = zoneAlignment.pairs.length + 1;
-            document.getElementById('transferStatus').textContent =
-                'Point ' + n + '/4 captured on drawing. Switch to Satellite View and tap the exact same physical landmark.';
-            return true;
-        }
-
-        function captureSatelliteAlignmentPoint(latlng) {
-            if (!zoneAlignment.active || currentMapView !== 'satellite' || zoneAlignment.phase !== 'target' || !zoneAlignment.pendingSource) return false;
-            const projected = L.CRS.EPSG3857.project(latlng);
-            zoneAlignment.pairs.push({
-                source: zoneAlignment.pendingSource.slice(),
-                target: [projected.x, projected.y]
-            });
-            zoneAlignment.pendingSource = null;
-
-            if (zoneAlignment.pairs.length === 4) {
-                const transform = calculateProjectiveTransform(zoneAlignment.pairs);
-                if (!transform) {
-                    zoneAlignment = {active:false, phase:'source', pairs:[], pendingSource:null};
-                    document.getElementById('transferStatus').textContent =
-                        'Registration failed: the four points are too close together or nearly collinear. Start again with four widely spaced landmarks.';
-                    return true;
-                }
-                zoneAlignmentTransform = transform;
-                localStorage.setItem('plant_zone_alignment_v1', JSON.stringify(transform));
-                zoneAlignment = {active:false, phase:'source', pairs:[], pendingSource:null};
-                document.getElementById('transferZoneBtn').disabled = false;
-                document.getElementById('transferStatus').textContent =
-                    '4-point registration saved. Select an engineering zone and transfer it. Verify the result against visible site features before use.';
-                return true;
-            }
-
-            const next = zoneAlignment.pairs.length + 1;
-            zoneAlignment.phase = 'source';
-            document.getElementById('transferStatus').textContent =
-                'Point ' + zoneAlignment.pairs.length + '/4 paired. Switch to Engineering Drawing and tap landmark ' + next + '. Use points spread around the plant, not in one small area.';
-            switchMapView('engineering');
-            return true;
-        }
-
-        // Solve an 8-parameter projective transform (homography) from four
-        // engineering drawing points to four Web-Mercator satellite points.
-        // Satellite coordinates are localized around their centroid to avoid
-        // numerical instability from large EPSG:3857 values.
-        function calculateProjectiveTransform(pairs) {
-            if (!Array.isArray(pairs) || pairs.length !== 4) return null;
-            const origin = [
-                pairs.reduce((sum,p) => sum + p.target[0], 0) / 4,
-                pairs.reduce((sum,p) => sum + p.target[1], 0) / 4
-            ];
-            const scale = 1000;
-            const matrix = [];
-            pairs.forEach(p => {
-                const x = Number(p.source[0]), y = Number(p.source[1]);
-                const u = (Number(p.target[0]) - origin[0]) / scale;
-                const v = (Number(p.target[1]) - origin[1]) / scale;
-                if (![x,y,u,v].every(Number.isFinite)) return;
-                matrix.push([x,y,1,0,0,0,-u*x,-u*y,u]);
-                matrix.push([0,0,0,x,y,1,-v*x,-v*y,v]);
-            });
-            if (matrix.length !== 8) return null;
-
-            // Gaussian elimination with partial pivoting.
-            for (let col=0; col<8; col++) {
-                let pivot=col;
-                for (let row=col+1; row<8; row++) {
-                    if (Math.abs(matrix[row][col]) > Math.abs(matrix[pivot][col])) pivot=row;
-                }
-                if (Math.abs(matrix[pivot][col]) < 1e-11) return null;
-                [matrix[col],matrix[pivot]]=[matrix[pivot],matrix[col]];
-                const divisor=matrix[col][col];
-                for (let k=col; k<=8; k++) matrix[col][k] /= divisor;
-                for (let row=0; row<8; row++) {
-                    if (row===col) continue;
-                    const factor=matrix[row][col];
-                    for (let k=col; k<=8; k++) matrix[row][k] -= factor*matrix[col][k];
-                }
-            }
-            const h=matrix.map(row=>row[8]);
-            if (!h.every(Number.isFinite)) return null;
-            return {version:2, h, origin, scale};
-        }
-
-        function transformEngineeringPoint(point) {
-            const t=zoneAlignmentTransform;
-            if (!t || t.version !== 2 || !Array.isArray(t.h) || t.h.length !== 8) return null;
-            const x=Number(point[0]), y=Number(point[1]), h=t.h;
-            const denominator=h[6]*x+h[7]*y+1;
-            if (!Number.isFinite(denominator) || Math.abs(denominator)<1e-10) return null;
-            const u=(h[0]*x+h[1]*y+h[2])/denominator;
-            const v=(h[3]*x+h[4]*y+h[5])/denominator;
-            const projected=L.point(t.origin[0]+u*t.scale, t.origin[1]+v*t.scale);
-            const latlng=L.CRS.EPSG3857.unproject(projected);
-            if (!Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return null;
-            return latlng;
-        }
-
-        function transformEngineeringLatLngTree(node) {
-            if (Array.isArray(node)) return node.map(transformEngineeringLatLngTree);
-            if (node && typeof node === 'object' && Number.isFinite(Number(node.lat)) && Number.isFinite(Number(node.lng))) {
-                const ll=transformEngineeringPoint([Number(node.lng),Number(node.lat)]);
-                if (!ll) throw new Error('A zone vertex could not be transformed. Re-register the maps.');
-                return [ll.lat,ll.lng];
-            }
-            throw new Error('Unexpected engineering geometry. Please redraw or edit this zone before transferring.');
-        }
-
-        function transferSelectedZone() {
-            const id=document.getElementById('transferZoneSelect').value;
-            const src=zones.find(z=>z.id===id);
-            if (!src) return alert('Select an engineering zone first.');
-            if (!zoneAlignmentTransform || zoneAlignmentTransform.version !== 2) return alert('Register the maps using four matching landmarks first.');
-            try {
-                const copy={
-                    id:'sz_transfer_'+Date.now(),
-                    name:src.name,
-                    type:src.type,
-                    status:src.status||'running',
-                    symbol:src.symbol||'',
-                    mapType:'satellite',
-                    transferredFrom:src.id,
-                    linkGroupId:src.linkGroupId || ('transfer_'+src.id)
-                };
-                if (src.type==='marker') {
-                    const ll=transformEngineeringPoint([src.latlng.lng,src.latlng.lat]);
-                    if (!ll) throw new Error('The marker could not be transformed.');
-                    copy.latlng={lat:ll.lat,lng:ll.lng};
-                } else {
-                    copy.latlngs=transformEngineeringLatLngTree(src.latlngs);
-                }
-
-                // Replace a previous transfer of the same engineering zone,
-                // rather than creating overlapping duplicate copies.
-                const existingIndex=satelliteZones.findIndex(z=>z.transferredFrom===src.id);
-                if (existingIndex>=0) {
-                    const previous=satelliteZones[existingIndex];
-                    copy.id=previous.id;
-                    copy.linkGroupId=previous.linkGroupId || copy.linkGroupId;
-                    satelliteZones[existingIndex]=copy;
-                } else {
-                    satelliteZones.push(copy);
-                }
-                src.linkGroupId=copy.linkGroupId;
-                persistPlantData();
-                renderDashboard();
-                renderSatelliteZones();
-                updateDropdowns();
-                refreshZoneLinkOptions();
-                document.getElementById('transferStatus').textContent=
-                    'Transferred '+src.name+' using the 4-point registration. Check the boundary at close zoom; repeat registration if it is offset.';
-                switchMapView('satellite');
-                setTimeout(() => {
-                    if (copy.type==='marker') satelliteMap.setView([copy.latlng.lat,copy.latlng.lng], Math.max(17,satelliteMap.getZoom()));
-                    else {
-                        const layer=copy.type==='polyline' ? L.polyline(copy.latlngs) : L.polygon(copy.latlngs);
-                        satelliteMap.fitBounds(layer.getBounds(),{padding:[40,40],maxZoom:19});
-                    }
-                },220);
-            } catch (error) {
-                alert('Zone transfer failed: '+error.message);
-            }
-        }
-
-        function cancelZoneAlignment() { zoneAlignment={active:false,phase:'source',pairs:[],pendingSource:null}; document.getElementById('transferStatus').textContent='Alignment cancelled. No map geometry was changed.'; }
-
-        // --- INDEPENDENT CONNECTION ROUTES (engineering vs geographical) ---
-        function toggleConnectionPanel() {
-            document.getElementById('transferPanel').classList.remove('visible');
-            document.getElementById('satellitePanel').classList.remove('visible');
-            document.getElementById('connectionPanel').classList.toggle('visible');
-        }
-        function activeConnectionLayer() { return currentMapView === 'engineering' ? engineeringConnectionLayer : satelliteConnectionLayer; }
-        function activeMapInstance() { return currentMapView === 'engineering' ? map : satelliteMap; }
-        function routeColor(route) { return route.color || '#f1d44d'; }
-        function updateConnectionStatus(message) {
-            const count = connectionRoutes.filter(r => r.mapType === currentMapView).length;
-            document.getElementById('connectionStatus').textContent = message || ('Current map: ' + (currentMapView === 'engineering' ? 'Engineering drawing' : 'Satellite map') + ' · ' + count + ' saved route(s).');
-            document.getElementById('finishConnectionBtn').disabled = !connectionDrawing || pendingConnectionPoints.length < 2;
-            document.getElementById('cancelConnectionBtn').disabled = !connectionDrawing;
-        }
-        function startConnectionDrawing() {
-            if (currentMapView === 'satellite' && !satelliteMap) initializeSatelliteMap();
-            connectionDrawing = true; connectionEditing = false; pendingConnectionPoints = [];
-            const layer = activeConnectionLayer();
-            if (layer) layer.eachLayer(l => { if (l._pendingConnection) layer.removeLayer(l); });
-            updateConnectionStatus('Drawing mode: tap the map to add route points. Add bends wherever needed.');
-            activeMapInstance().doubleClickZoom.disable();
-        }
-        function addConnectionPoint(latlng) {
-            if (!connectionDrawing) return;
-            pendingConnectionPoints.push([latlng.lat, latlng.lng]);
-            const layer = activeConnectionLayer();
-            if (window.pendingRoutePreview) layer.removeLayer(window.pendingRoutePreview);
-            if (pendingConnectionPoints.length > 1) {
-                window.pendingRoutePreview = L.polyline(pendingConnectionPoints, {color:'#f1d44d',weight:5,dashArray:'8,7',opacity:.95}).addTo(layer);
-                window.pendingRoutePreview._pendingConnection = true;
-            }
-            updateConnectionStatus(pendingConnectionPoints.length + ' point(s) added. Add more bends or finish the route.');
-        }
-        function finishConnectionDrawing() {
-            if (!connectionDrawing || pendingConnectionPoints.length < 2) return alert('Add at least two points to create a route.');
-            const name = prompt('Enter a route / conveyor name:');
-            if (!name) return;
-            if (window.pendingRoutePreview && activeConnectionLayer()) activeConnectionLayer().removeLayer(window.pendingRoutePreview);
-            connectionRoutes.push({ id:'route_' + Date.now(), name:name.trim(), mapType:currentMapView, points:pendingConnectionPoints.map(p=>[...p]), color:'#f1d44d', direction:true });
-            localStorage.setItem('plant_connection_routes_v1', JSON.stringify(connectionRoutes));
-            connectionDrawing = false; pendingConnectionPoints = []; window.pendingRoutePreview = null;
-            activeMapInstance().doubleClickZoom.enable(); renderConnectionRoutes();
-            updateConnectionStatus('Route saved independently on this map.');
-        }
-        function cancelConnectionDrawing() {
-            if (window.pendingRoutePreview && activeConnectionLayer()) activeConnectionLayer().removeLayer(window.pendingRoutePreview);
-            window.pendingRoutePreview = null; pendingConnectionPoints = []; connectionDrawing = false;
-            if (activeMapInstance()) activeMapInstance().doubleClickZoom.enable();
-            updateConnectionStatus('Route drawing cancelled.');
-        }
-        function renderConnectionRoutes() {
-            if (engineeringConnectionLayer) engineeringConnectionLayer.clearLayers();
-            if (satelliteConnectionLayer) satelliteConnectionLayer.clearLayers();
-            connectionRoutes.forEach(route => {
-                const target = route.mapType === 'engineering' ? engineeringConnectionLayer : satelliteConnectionLayer;
-                if (!target || !route.points || route.points.length < 2) return;
-                const line = L.polyline(route.points, {color:routeColor(route),weight:4,opacity:.95,dashArray:'10,6',interactive:true}).addTo(target);
-                line.routeId = route.id;
-                line.bindTooltip(route.name, {sticky:true, className:'connection-route-label'});
-                if (route.direction) {
-                    const mid = route.points[Math.floor(route.points.length/2)];
-                    L.circleMarker(mid,{radius:4,color:'#fff',weight:1,fillColor:routeColor(route),fillOpacity:1,interactive:false}).addTo(target);
-                }
-            });
-        }
-        function persistEditedConnections(event) {
-            event.layers.eachLayer(layer => {
-                const route = connectionRoutes.find(r => r.id === layer.routeId);
-                if (route) route.points = layer.getLatLngs().map(p => [p.lat,p.lng]);
-            });
-            localStorage.setItem('plant_connection_routes_v1', JSON.stringify(connectionRoutes));
-            renderConnectionRoutes(); updateConnectionStatus('Edited route geometry saved.');
-        }
-        function toggleConnectionEditing() {
-            const control = currentMapView === 'engineering' ? engineeringEditControl : satelliteEditControl;
-            if (!control) return;
-            // Leaflet.draw exposes the edit toolbar through its control; clicking the pencil
-            // button enables vertex handles for routes on the currently active map only.
-            updateConnectionStatus('Use the pencil control on the map toolbar to drag route vertices, then save the edit.');
-        }
-
-        // --- DATABASE SETUP (v4) ---
-        // Incrementing storage key to avoid breaking changes with old schemas
-        let zones = JSON.parse(localStorage.getItem('plant_zones_v4')) || [];
-        let workers = JSON.parse(localStorage.getItem('plant_workers_v4')) || [];
-        
-        function persistPlantData() {
-            try {
-                localStorage.setItem('plant_zones_v4', JSON.stringify(zones));
-                localStorage.setItem('plant_workers_v4', JSON.stringify(workers));
-                localStorage.setItem('plant_satellite_zones_v1', JSON.stringify(satelliteZones));
-                localStorage.setItem('plant_connection_routes_v1', JSON.stringify(connectionRoutes));
-                return true;
-            } catch (err) {
-                console.error('Plant Tracker save failed:', err);
-                const status = document.getElementById('zoneLinkStatus') || document.getElementById('plantLocationStatus');
-                if (status) status.textContent = 'Could not save locally. Browser storage may be full or unavailable. Export/backup your data before continuing.';
-                return false;
-            }
-        }
-        function saveToDatabase() {
-            const saved = persistPlantData();
-            renderDashboard();
-            refreshTransferZoneOptions();
-            refreshZoneLinkOptions();
-            if (satelliteMap) renderSatelliteZones();
-            if (!saved) console.warn('Changes are currently only in memory and were not persisted.');
-        }
-
-        // --- MAP INITIALIZATION ---
-        const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 4 });
-        const imgWidth = 1176; const imgHeight = 1536; // F_D1.jpg natural pixel dimensions; preserve its aspect ratio 
-        const bounds = [[0, 0], [imgHeight, imgWidth]];
-        
-        L.imageOverlay('F_D1.jpg', bounds).addTo(map);
-        map.fitBounds(bounds);
-        engineeringConnectionLayer = new L.FeatureGroup().addTo(map);
-        map.on('click', function(event) {
-            if (zoneAlignment.active && currentMapView==='engineering') { captureEngineeringAlignmentPoint(event.latlng); return; }
-            if (connectionDrawing && currentMapView==='engineering') addConnectionPoint(event.latlng);
-        });
-        engineeringEditControl = new L.Control.Draw({ draw:false, edit:{ featureGroup:engineeringConnectionLayer, remove:false } });
-        map.addControl(engineeringEditControl);
-        map.on(L.Draw.Event.EDITED, persistEditedConnections);
-        renderConnectionRoutes();
-
-        function updateMapZoomClass() {
-            const currentZoom = map.getZoom();
-            const mapContainer = document.getElementById('map');
-            
-            mapContainer.classList.remove('zoom-level-out', 'zoom-level-mid');
-            
-            if (currentZoom < -1) {
-                mapContainer.classList.add('zoom-level-out');
-            } else if (currentZoom === -1) {
-                mapContainer.classList.add('zoom-level-mid');
-            }
-        }
-        
-        map.on('zoomend', updateMapZoomClass);
-        map.on('zoomend moveend', layoutEngineeringBadges);
-        updateMapZoomClass(); 
-
-        // --- DRAWING TOOLS ---
-        var drawnItems = new L.FeatureGroup();
-        map.addLayer(drawnItems);
-        
-        var drawControl = new L.Control.Draw({
-            draw: {
-                circle: false, circlemarker: false, marker: true,
-                polygon: { shapeOptions: { color: '#4da8da', weight: 2, fillOpacity: 0.2 } },
-                rectangle: { shapeOptions: { color: '#4da8da', weight: 2, fillOpacity: 0.2 } },
-                polyline: { 
-                    shapeOptions: { color: '#00ff00', weight: 4, dashArray: '10, 14', opacity: 0.9 },
-                    icon: new L.DivIcon({ iconSize: new L.Point(8, 8), className: 'leaflet-div-icon' })
-                }
-            },
-            edit: { featureGroup: drawnItems }
-        });
-        map.addControl(drawControl);
-        map.on(L.Draw.Event.EDITED, onEngineeringZonesEdited);
-
-        map.on(L.Draw.Event.CREATED, function (e) {
-            var type = e.layerType, layer = e.layer;
-            var zoneName = prompt("Enter a name for this Location/Route:");
-            if (!zoneName) return; 
-
-            // Initialize new zones with empty symbol
-            let newZone = { id: 'z_' + Date.now(), name: zoneName, type: type, status: 'running', symbol: '' };
-            if (type === 'marker') { newZone.latlng = layer.getLatLng(); } 
-            else { newZone.latlngs = layer.getLatLngs(); }
-            
-            zones.push(newZone);
-            saveToDatabase();
-        });
-
-        // Delete a logical zone across both map representations. A transferred
-        // satellite copy is identified by transferredFrom; manually linked pairs
-        // are identified by their shared linkGroupId. Unlinked satellite-only
-        // zones are intentionally preserved when an engineering zone is deleted.
-        function deleteZoneWithLinkedPeer(mapKind, zoneId) {
-            const engineeringZone = zones.find(z => z.id === zoneId);
-            const satelliteZone = satelliteZones.find(z => z.id === zoneId);
-            const source = mapKind === 'engineering' ? engineeringZone : satelliteZone;
-            if (!source) return [];
-
-            const removeIds = new Set([zoneId]);
-            if (mapKind === 'engineering') {
-                satelliteZones.forEach(peer => {
-                    if (peer.transferredFrom === zoneId ||
-                        (source.linkGroupId && peer.linkGroupId === source.linkGroupId)) {
-                        removeIds.add(peer.id);
-                    }
-                });
-            } else {
-                zones.forEach(peer => {
-                    if ((source.linkGroupId && peer.linkGroupId === source.linkGroupId) ||
-                        source.transferredFrom === peer.id) {
-                        removeIds.add(peer.id);
-                    }
-                });
-                // If this is a transferred copy, also remove any other satellite
-                // copies belonging to the same engineering source.
-                if (source.transferredFrom) {
-                    satelliteZones.forEach(peer => {
-                        if (peer.transferredFrom === source.transferredFrom) removeIds.add(peer.id);
-                    });
-                }
-            }
-
-            zones = zones.filter(z => !removeIds.has(z.id));
-            satelliteZones = satelliteZones.filter(z => !removeIds.has(z.id));
-            workers.forEach(w => { if (removeIds.has(w.zoneId)) w.zoneId = null; });
-            return [...removeIds];
-        }
-
-        map.on(L.Draw.Event.DELETED, function (e) {
-            const removedIds = new Set();
-            e.layers.eachLayer(function (layer) {
-                if (layer.zoneId) deleteZoneWithLinkedPeer('engineering', layer.zoneId).forEach(id => removedIds.add(id));
-            });
-            saveToDatabase();
-            if (removedIds.size) {
-                const status = document.getElementById('zoneLinkStatus');
-                if (status) status.textContent = removedIds.size + ' linked zone record(s) removed from both views.';
-            }
-        });
-
-        // --- SATELLITE MAP: FULLY EDITABLE SITE ZONES ---
-        function onSatelliteZoneCreated(e) {
-            const name = prompt('Name this site area / equipment / route:');
-            if (!name) return;
-            const layer = e.layer, type = e.layerType;
-            const item = { id:'sz_' + Date.now(), name:name.trim(), type, status:'running', symbol:'', mapType:'satellite' };
-            if (type === 'marker') item.latlng = layer.getLatLng();
-            else item.latlngs = layer.getLatLngs();
-            satelliteZones.push(item);
-            persistPlantData();
-            renderSatelliteZones();
-            updateDropdowns();
-            refreshZoneLinkOptions();
-        }
-        function onSatelliteZonesEdited(e) {
-            e.layers.eachLayer(layer => {
-                const z = satelliteZones.find(x => x.id === layer.zoneId);
-                if (!z) return;
-                if (z.type === 'marker') {
-                    const ll = layer.getLatLng();
-                    z.latlng = {lat:ll.lat, lng:ll.lng};
-                } else {
-                    z.latlngs = layer.getLatLngs();
-                }
-            });
-            persistPlantData();
-            renderSatelliteZones();
-        }
-        function onSatelliteZonesDeleted(e) {
-            const removedIds = new Set();
-            e.layers.eachLayer(layer => {
-                if (layer.zoneId) deleteZoneWithLinkedPeer('satellite', layer.zoneId).forEach(id => removedIds.add(id));
-            });
-            saveToDatabase();
-            if (removedIds.size) {
-                const status = document.getElementById('zoneLinkStatus');
-                if (status) status.textContent = removedIds.size + ' linked zone record(s) removed from both views.';
-            }
-        }
-        // Badge anchors are independent from zone geometry. Users can drag each
-        // operational badge to the exact equipment point they want to represent.
-        // Engineering anchors are stored in CRS.Simple drawing coordinates as {lat,lng};
-        // satellite anchors are geographic coordinates in the same object shape.
-        function validBadgeAnchor(anchor) {
-            return !!anchor && Number.isFinite(Number(anchor.lat)) && Number.isFinite(Number(anchor.lng));
-        }
-        function makeBadgeDraggable(marker, zone, mapInstance, storageKind) {
-            marker.options.draggable = true;
-            marker.dragging.enable();
-            marker.on('dragend', function () {
-                const p = marker.getLatLng();
-                zone.badgeAnchor = { lat:p.lat, lng:p.lng };
-                zone.badgeAnchorMode = 'manual';
-                marker._badgeAnchor = L.latLng(p.lat,p.lng);
-                if (storageKind === 'engineering') {
-                    persistPlantData();
-                } else {
-                    localStorage.setItem('plant_satellite_zones_v1', JSON.stringify(satelliteZones));
-                }
-                const status = document.getElementById(storageKind === 'engineering' ? 'zoneLinkStatus' : 'transferStatus');
-                if (status) status.textContent = 'Badge position saved for ' + zone.name + '.';
-            });
-            marker.bindTooltip('Drag to reposition this zone badge', {direction:'top', opacity:.9});
-            return marker;
-        }
-
-        function polygonCentroidLatLngs(latlngs) {
-            // Leaflet CRS.Simple: x = lng, y = lat. Polygon area centroid,
-            // with bounds-centre fallback for degenerate/complex geometry.
-            const ring = Array.isArray(latlngs) && Array.isArray(latlngs[0]) ? latlngs[0] : latlngs;
-            if (!Array.isArray(ring) || ring.length < 3) return null;
-            let area2=0, cx=0, cy=0;
-            for (let i=0,j=ring.length-1; i<ring.length; j=i++) {
-                const a=ring[j], b=ring[i];
-                const ax=Number(a.lng ?? a[1]), ay=Number(a.lat ?? a[0]);
-                const bx=Number(b.lng ?? b[1]), by=Number(b.lat ?? b[0]);
-                const cross=ax*by-bx*ay;
-                area2+=cross; cx+=(ax+bx)*cross; cy+=(ay+by)*cross;
-            }
-            if (Math.abs(area2)<1e-9) return null;
-            return L.latLng(cy/(3*area2), cx/(3*area2));
-        }
-
-        function defaultEngineeringBadgeAnchor(zone, shapeLayer, fallback) {
-            if (zone.badgeAnchorMode === 'manual' && validBadgeAnchor(zone.badgeAnchor)) return L.latLng(Number(zone.badgeAnchor.lat), Number(zone.badgeAnchor.lng));
-            if ((zone.type==='polygon' || zone.type==='rectangle') && zone.latlngs) {
-                const c=polygonCentroidLatLngs(zone.latlngs);
-                if (c) return c;
-            }
-            return fallback ? L.latLng(fallback) : shapeLayer.getBounds().getCenter();
-        }
-
-        function defaultSatelliteBadgeAnchor(zone, fallback) {
-            if (zone.badgeAnchorMode === 'manual' && validBadgeAnchor(zone.badgeAnchor)) return L.latLng(Number(zone.badgeAnchor.lat), Number(zone.badgeAnchor.lng));
-            return fallback ? L.latLng(fallback) : null;
-        }
-
-        function renderSatelliteZones() {
-            if (!satelliteMap || !satelliteDrawnItems) return;
-            satelliteDrawnItems.clearLayers();
-            Object.values(satelliteZoneBadgeMarkers).forEach(m => satelliteMap.removeLayer(m));
-            satelliteZoneBadgeMarkers = {};
-            const assigned = {};
-            satelliteZones.forEach(z => assigned[z.id] = []);
-            workers.forEach(w => {
-                if (!w.zoneId) return;
-                const assignedZone = [...zones, ...satelliteZones].find(item => item.id === w.zoneId);
-                const groupId = assignedZone && assignedZone.linkGroupId;
-                satelliteZones.forEach(target => {
-                    if (target.id === w.zoneId || (groupId && target.linkGroupId === groupId)) assigned[target.id].push(w);
-                });
-            });
-            satelliteZones.forEach(z => {
-                const linkedPeer = z.linkGroupId ? zones.find(peer => peer.linkGroupId === z.linkGroupId) : null;
-                const status = (linkedPeer && linkedPeer.status) || z.status || 'running';
-                const color = status === 'running' ? '#00d66b' : status === 'maintenance' ? '#ffaa00' : '#ff3030';
-                let shape, center;
-                if (z.type === 'marker') {
-                    center = z.latlng;
-                    shape = L.circleMarker(center, {radius:9,color,weight:3,fillColor:color,fillOpacity:.45});
-                } else if (z.type === 'polyline') {
-                    shape = L.polyline(z.latlngs, {color,weight:5,dashArray:'10,8',opacity:.95});
-                    center = shape.getBounds().getCenter();
-                } else {
-                    shape = L.polygon(z.latlngs, {color,weight:3,fillColor:color,fillOpacity:.18});
-                    center = shape.getBounds().getCenter();
-                }
-                shape.zoneId = z.id;
-                shape.bindTooltip((z.symbol ? z.symbol + ' ' : '') + z.name, {sticky:true});
-                satelliteDrawnItems.addLayer(shape);
-                if (z.type !== 'polyline' || (assigned[z.id] || []).length) {
-                    const people = assigned[z.id] || [];
-                    const workersHtml = people.length ? '<div class="badge-workers">' + people.map(w => `<div class="worker-item"><span>${escapeHtml(w.name)}</span><span>${escapeHtml(w.role)}</span></div>`).join('') + '</div>' : '';
-                    const linkedTag = z.linkGroupId ? '<span class="linked-zone-tag">LINKED ZONE</span>' : '';
-                    const html = `<div class="manpower-badge"><div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${z.symbol || ''}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div><div class="badge-count">${people.length} Personnel</div>${linkedTag}${workersHtml}<span class="badge-drag-note">DRAG TO POSITION</span></div>`;
-                    const badgeAnchor=defaultSatelliteBadgeAnchor(z,center);
-                    const icon = L.divIcon({className:'transparent-icon',iconSize:[0,0],iconAnchor:[0,0],html});
-                    const badgeMarker=L.marker(badgeAnchor,{icon,interactive:true,draggable:true,bubblingMouseEvents:false}).addTo(satelliteMap);
-                    badgeMarker._badgeAnchor=badgeAnchor;
-                    badgeMarker._zoneInfo={zone:z,status,people,linked:!!z.linkGroupId};
-                    makeBadgeDraggable(badgeMarker,z,satelliteMap,'satellite');
-                    satelliteZoneBadgeMarkers[z.id] = badgeMarker;
-                }
-            });
-            layoutSatelliteBadges();
-        }
-
-        function satelliteBadgeIcon(marker, zoom) {
-            const info = marker._zoneInfo || {};
-            const z = info.zone || {};
-            const status = info.status || 'running';
-            const color = status === 'running' ? '#00d66b' : status === 'maintenance' ? '#ffaa00' : '#ff3030';
-            const people = info.people || [];
-            let html = '';
-            let size = [1,1], anchor = [0,0];
-
-            if (zoom <= 15) {
-                html = `<div class="satellite-dot" style="background:${color};box-shadow:0 0 0 3px ${color}33,0 0 9px ${color}99"></div>`;
-            } else if (zoom <= 17) {
-                const shortName = String(z.name || 'Zone');
-                html = `<div class="satellite-compact-tag"><span class="satellite-tag-dot" style="background:${color}"></span><span>${escapeHtml(shortName.length > 19 ? shortName.slice(0,18)+'…' : shortName)}</span></div>`;
-            } else if (zoom <= 19) {
-                html = `<div class="manpower-badge satellite-info-card">
-                    <div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${escapeHtml(z.symbol || '')}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div>
-                    <div class="badge-count">${people.length} Personnel</div>
-                    ${info.linked ? '<span class="linked-zone-tag">LINKED ZONE</span>' : ''}
-                </div>`;
-            } else {
-                const workersHtml = people.length ? '<div class="badge-workers">' + people.map(w => `<div class="worker-item"><span>${escapeHtml(w.name)}</span><span>${escapeHtml(w.role)}</span></div>`).join('') + '</div>' : '';
-                html = `<div class="manpower-badge satellite-detail-card">
-                    <div class="badge-header"><span class="led led-${status}"></span><span class="machine-symbol">${escapeHtml(z.symbol || '')}</span><span class="badge-zone">${escapeHtml(z.name)}</span></div>
-                    <div class="badge-count">${people.length} Personnel</div>
-                    ${info.linked ? '<span class="linked-zone-tag">LINKED ZONE</span>' : ''}${workersHtml}
-                    <span class="badge-drag-note">DRAG TO POSITION</span>
-                </div>`;
-            }
-            return L.divIcon({className:'transparent-icon',iconSize:size,iconAnchor:anchor,html});
-        }
-
-        function updateSatelliteBadgeScale() {
-            if (!satelliteMap) return;
-            const zoom = satelliteMap.getZoom();
-            const scale = zoom >= 20 ? 1 : 0.94;
-            document.querySelectorAll('#satellite-map .manpower-badge').forEach(el => {
-                el.style.setProperty('--badge-scale', String(scale));
-            });
-        }
-
-        function layoutSatelliteBadges() {
-            if (!satelliteMap) return;
-            const zoom = satelliteMap.getZoom();
-            const markers = Object.values(satelliteZoneBadgeMarkers);
-            satelliteClusterMarkers.forEach(m => satelliteMap.removeLayer(m));
-            satelliteClusterMarkers = [];
-
-            // At detailed zoom levels every zone is shown independently.
-            if (zoom >= 18) {
-                markers.forEach(marker => {
-                    marker.setOpacity(1);
-                    marker.setIcon(satelliteBadgeIcon(marker, zoom));
-                    if (marker.dragging) {
-                        if (zoom >= 20) marker.dragging.enable();
-                        else marker.dragging.disable();
-                    }
-                });
-                updateSatelliteBadgeScale();
-                return;
-            }
-
-            // At overview/compact levels, group nearby zones in screen pixels.
-            const groups = [];
-            const radius = zoom <= 15 ? 42 : 58;
-            markers.forEach(marker => {
-                const point = satelliteMap.latLngToContainerPoint(marker.getLatLng());
-                let group = groups.find(g => g.points.some(p => point.distanceTo(p) <= radius));
-                if (!group) { group = {markers:[],points:[]}; groups.push(group); }
-                group.markers.push(marker);
-                group.points.push(point);
-            });
-
-            groups.forEach(group => {
-                if (group.markers.length === 1) {
-                    const marker = group.markers[0];
-                    marker.setOpacity(1);
-                    marker.setIcon(satelliteBadgeIcon(marker, zoom));
-                    if (marker.dragging) marker.dragging.disable();
-                    return;
-                }
-
-                group.markers.forEach(marker => marker.setOpacity(0));
-                const bounds = L.latLngBounds(group.markers.map(m => m.getLatLng()));
-                const center = bounds.getCenter();
-                const count = group.markers.length;
-                const html = `<div class="satellite-cluster" role="button" aria-label="${count} zones">${count}</div>`;
-                const cluster = L.marker(center, {
-                    icon:L.divIcon({className:'satellite-cluster-icon',html,iconSize:[38,38],iconAnchor:[19,19]}),
-                    keyboard:true, bubblingMouseEvents:false
-                }).addTo(satelliteMap);
-                cluster.on('click', () => {
-                    const targetZoom = Math.min(satelliteMap.getMaxZoom(), Math.max(satelliteMap.getZoom()+2, 18));
-                    if (bounds.getNorthEast().equals(bounds.getSouthWest())) satelliteMap.setView(center,targetZoom);
-                    else satelliteMap.fitBounds(bounds,{padding:[48,48],maxZoom:targetZoom});
-                });
-                satelliteClusterMarkers.push(cluster);
-            });
-            updateSatelliteBadgeScale();
-        }
-
-        function escapeHtml(value) { return String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-        function findZoneById(id) { return zones.find(z => z.id === id) || satelliteZones.find(z => z.id === id); }
-
-        // --- STATUS & SETTINGS LOGIC ---
-        function loadZoneSettings() {
-            const zId = document.getElementById('settingZoneSelect').value;
-            const z = findZoneById(zId);
-            if(z) { 
-                document.getElementById('zoneStatusSelect').value = z.status || 'running';
-                document.getElementById('zoneSymbolSelect').value = z.symbol || '';
-            }
-        }
-
-        function updateZoneStatus() {
-            const zId = document.getElementById('settingZoneSelect').value;
-            const newStatus = document.getElementById('zoneStatusSelect').value;
-            const newSymbol = document.getElementById('zoneSymbolSelect').value;
-            
-            if(!zId) return alert('Select a zone first.');
-            
-            const z = findZoneById(zId);
-            if(z) {
-                const linkedId = z.linkGroupId;
-                const all = [...zones, ...satelliteZones];
-                const targets = linkedId ? all.filter(item => item.linkGroupId === linkedId) : [z];
-                targets.forEach(item => {
-                    item.status = newStatus;
-                    item.symbol = newSymbol;
-                });
-                saveToDatabase();
-            }
-        }
-
-        // --- RENDER LOGIC ---
-        let badgeMarkers = {}; 
-
-        function renderDashboard() { 
-            updateDropdowns();
-            refreshTransferZoneOptions();
-            renderWorkerList(); 
-            renderMapMarkers();
-            if (satelliteMap) renderSatelliteZones();
-        }
-        
-        function renderMapMarkers() {
-            drawnItems.clearLayers();
-            Object.values(badgeMarkers).forEach(m => map.removeLayer(m));
-            badgeMarkers = {};
-            
-            const zoneWorkers = {};
-            zones.forEach(z => zoneWorkers[z.id] = []);
-            workers.forEach(w => {
-                if (!w.zoneId) return;
-                const assignedZone = [...zones, ...satelliteZones].find(item => item.id === w.zoneId);
-                const groupId = assignedZone && assignedZone.linkGroupId;
-                zones.forEach(target => {
-                    if (target.id === w.zoneId || (groupId && target.linkGroupId === groupId)) zoneWorkers[target.id].push(w);
-                });
-            });
-            
-            zones.forEach(zone => {
-                let centerPoint;
-                let shapeLayer;
-                
-                const stat = zone.status || 'running';
-                let baseColor = stat === 'running' ? '#00ff00' : (stat === 'maintenance' ? '#ffaa00' : '#ff0000');
-                let cssClass = '';
-                
-                if (stat === 'running') {
-                    if (zone.type === 'polyline') cssClass = 'flowing-line';
-                    else if (zone.type === 'polygon' || zone.type === 'rectangle') cssClass = 'pulsing-zone';
-                }
-
-                if (zone.type === 'marker') {
-                    centerPoint = [zone.latlng.lat, zone.latlng.lng];
-                    shapeLayer = L.circleMarker(centerPoint, { radius: 8, color: baseColor, fillOpacity: 0.8, className: cssClass });
-                } else if (zone.type === 'polyline') {
-                    shapeLayer = L.polyline(zone.latlngs, {color: baseColor, weight: 4, dashArray: '10, 14', opacity: 0.9, className: cssClass});
-                    centerPoint = shapeLayer.getBounds().getCenter(); 
-                } else if (zone.type === 'polygon' || zone.type === 'rectangle') {
-                    shapeLayer = L.polygon(zone.latlngs, {color: baseColor, weight: 2, fillOpacity: 0.15, className: cssClass});
-                    centerPoint = shapeLayer.getBounds().getCenter();
-                }
-
-                if(shapeLayer) {
-                    shapeLayer.zoneId = zone.id;
-                    drawnItems.addLayer(shapeLayer);
-                }
-                
-                const assignedWorkers = zoneWorkers[zone.id];
-                const count = assignedWorkers.length;
-                
-                if (zone.type !== 'polyline' || count > 0) {
-                    
-                    let workersHtml = '';
-                    if (count > 0) {
-                        const items = assignedWorkers.map(w => `<div class="worker-item"><span>${w.name}</span> <span style="color:#4da8da; font-size:10px;">${w.role}</span></div>`).join('');
-                        workersHtml = `<div class="badge-workers">${items}</div>`;
-                    }
-                    
-                    // Render the symbol if it exists for this zone
-                    let symbolHtml = zone.symbol ? `<div class="machine-symbol">${zone.symbol}</div>` : '';
-                    
-                    const badgeIcon = L.divIcon({
-                        className: 'transparent-icon', iconSize: [0, 0], iconAnchor: [0, 0], 
-                        html: `
-                            <div class="manpower-badge">
-                                <div class="badge-header">
-                                    <div class="led led-${stat}"></div>
-                                    ${symbolHtml}
-                                    <div class="badge-zone">${zone.name}</div>
-                                </div>
-                                <div class="badge-count">${count} Personnel Active</div>
-                                ${workersHtml}<span class="badge-drag-note">DRAG TO POSITION</span>
-                            </div>`
-                    });
-                    
-                    if (centerPoint) {
-                        const badgeAnchor=defaultEngineeringBadgeAnchor(zone,shapeLayer,centerPoint);
-                        badgeMarkers[zone.id] = L.marker(badgeAnchor, { icon: badgeIcon, interactive: true, draggable: true, bubblingMouseEvents:false }).addTo(map);
-                        badgeMarkers[zone.id]._badgeAnchor = L.latLng(badgeAnchor);
-                        makeBadgeDraggable(badgeMarkers[zone.id],zone,map,'engineering');
-                    }
-                }
-            });
-            layoutEngineeringBadges();
-        }
-        
-        function layoutEngineeringBadges() {
-            // Badge markers are anchored to saved drawing coordinates. Never
-            // shift them to avoid collisions; let the user drag them to the
-            // intended equipment location inside each zone.
-            Object.values(badgeMarkers).forEach(marker => {
-                if (marker._badgeAnchor) marker.setLatLng(marker._badgeAnchor);
-            });
-        }
-
-        function onEngineeringZonesEdited(e) {
-            e.layers.eachLayer(layer => {
-                const z = zones.find(item => item.id === layer.zoneId);
-                if (!z) return;
-                if (z.type === 'marker') {
-                    const ll = layer.getLatLng();
-                    z.latlng = {lat:ll.lat, lng:ll.lng};
-                } else {
-                    z.latlngs = layer.getLatLngs();
-                }
-            });
-            saveToDatabase();
-        }
-
-        function updateDropdowns() {
-            const setSelect = document.getElementById('settingZoneSelect');
-            const assignSelect = document.getElementById('assignZoneSelect');
-            
-            setSelect.innerHTML = '<option value="">-- Select Machine/Zone --</option>';
-            assignSelect.innerHTML = '<option value="">-- Select Location --</option>';
-            
-            [...zones.map(z => ({...z, _map:'Engineering'})), ...satelliteZones.map(z => ({...z, _map:'Satellite'}))].forEach(z => {
-                // Use the custom symbol in the dropdown if available, otherwise default to line/pin
-                let displayIcon = z.symbol ? z.symbol + ' ' : (z.type === 'polyline' ? '🔗 ' : '📍 ');
-                
-                let opt1 = document.createElement('option'); opt1.value = z.id; opt1.textContent = displayIcon + z._map + ' · ' + z.name;
-                let opt2 = document.createElement('option'); opt2.value = z.id; opt2.textContent = displayIcon + z._map + ' · ' + z.name;
-                
-                setSelect.appendChild(opt1);
-                assignSelect.appendChild(opt2);
-            });
-        }
-
-        function renderWorkerList() {
-            const listDiv = document.getElementById('workerList');
-            listDiv.innerHTML = '';
-            
-            if(workers.length === 0) {
-                listDiv.innerHTML = '<p style="color:#666; font-size:13px; font-style:italic;">No workers active.</p>';
-            }
-            
-            workers.forEach((worker, index) => {
-                let optionsHtml = '<option value="">-- Reassign --</option>';
-                optionsHtml += [...zones, ...satelliteZones].map(z => {
-                    let displayIcon = z.symbol ? z.symbol + ' ' : '';
-                    return `<option value="${z.id}" ${worker.zoneId === z.id ? 'selected' : ''}>${displayIcon}${z.name}</option>`
-                }).join('');
-                
-                const card = document.createElement('div');
-                card.className = 'worker-card';
-                card.innerHTML = `
-                    <div class="worker-name">${worker.name} <span class="role-tag">${worker.role}</span></div>
-                    <select onchange="updateWorkerZone(${index}, this.value)">${optionsHtml}</select>
-                `;
-                listDiv.appendChild(card);
-            });
-        }
-        
-        // --- ACTIONS ---
-        function addWorker() {
-            const nameInput = document.getElementById('workerName');
-            const roleSelect = document.getElementById('workerRole');
-            const zoneSelect = document.getElementById('assignZoneSelect');
-            
-            if (nameInput.value.trim() === '') return alert('Enter a worker name');
-            if (zoneSelect.value === '') return alert('Please select a location.');
-            
-            workers.push({ id: Date.now(), name: nameInput.value.trim(), role: roleSelect.value, zoneId: zoneSelect.value });
-            nameInput.value = '';
-            saveToDatabase();
-        }
-        
-        function updateWorkerZone(workerIndex, newZoneId) { workers[workerIndex].zoneId = newZoneId; saveToDatabase(); }
-        
-        function clearData() { 
-            if(confirm('WARNING: Delete ALL engineering zones, satellite zones, links, routes, machines and worker assignments? This cannot be undone.')) { 
-                workers = [];
-                zones = [];
-                satelliteZones = [];
-                connectionRoutes = [];
-                persistPlantData();
-                renderDashboard();
-                renderConnectionRoutes();
-                refreshTransferZoneOptions();
-                refreshZoneLinkOptions();
-                if (satelliteMap) renderSatelliteZones();
-                const status = document.getElementById('zoneLinkStatus');
-                if (status) status.textContent = 'Factory reset complete. Both maps are cleared.';
-            } 
-        }
-        
-        renderDashboard();
-    </script>
+  </div>
+  <script src="app.js"></script>
 </body>
 </html>

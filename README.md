@@ -1,28 +1,32 @@
-# Plant Tracker – Bidirectional Zone Deletion Sync (v6)
+# Plant Tracker — Operations Prototype
 
-## Included
-- `index.html` – updated application
-- `F_D1.jpg` – engineering drawing asset
+A standalone, responsive HTML/CSS/vanilla-JavaScript demonstration of the proposed Plant Tracker operations modules.
 
-## Fix
-Deleting a zone in either map now deletes its linked counterpart in the other map.
+## Run locally
+Open `index.html` in a browser, or use VS Code Live Server.
 
-- Engineering zone deletion removes its transferred satellite copy (`transferredFrom`) and/or a manually linked satellite peer (`linkGroupId`).
-- Satellite zone deletion removes its linked engineering peer and any satellite copies derived from the same engineering zone.
-- Worker assignments pointing to deleted zones are cleared.
-- Unlinked, independently created satellite-only zones are preserved when an engineering zone is deleted.
-- Factory Reset now clears engineering zones, satellite zones, workers, and connection routes from both views.
-- Both map layers, dropdowns, dashboard and localStorage are refreshed after deletion.
+## Publish on GitHub Pages
+1. Create or choose a GitHub repository.
+2. Upload the contents of this folder (keep `index.html` at repository root).
+3. Open **Settings → Pages**.
+4. Under Build and deployment, choose **Deploy from a branch**.
+5. Select `main` and `/ (root)`, then Save.
+6. Open the published Pages URL after deployment finishes.
 
-## Deploy
-Replace `index.html` and `F_D1.jpg` in the GitHub Pages repository. Keep both files in the same directory. Do not clear browser site data.
+## Prototype scope
+- Overview dashboard
+- Official plant, area and shift communication channels
+- Guided and natural-language report demonstrations
+- Workforce and attendance
+- Individual equipment monitoring and floor summaries
+- Safety observations
+- Supervisor/manager approval workflow illustration
+- Configurable shift and handover screens
+- Illustrative plant map
+- History and sample CSV export
+- Responsive desktop/mobile layout
 
-## Test
-1. Ensure an engineering zone has a transferred or linked satellite counterpart.
-2. Delete the engineering zone using the map's delete tool.
-3. Switch to Satellite View: the corresponding linked/transferred zone and its badge should be gone.
-4. Repeat by deleting from Satellite View and verify its linked engineering zone is also removed.
-5. Create an independent satellite-only zone, delete an unrelated engineering zone, and verify the independent satellite zone remains.
-6. Use Factory Reset only if you intend to clear all zone data on both maps.
+## Important
+This is a frontend-only simulation. Sample data is hardcoded in `app.js`; actions show demonstration feedback and do not create authoritative operational records. There is no authentication, database, live map, WhatsApp integration, real notifications, or real approval. Do not use it to direct plant operations or make safety decisions.
 
-Data is stored in browser LocalStorage; it does not synchronize across different devices or browsers.
+The later integration should replace sample arrays and demo event handlers with authenticated Supabase queries and server-side workflows, while retaining the UI components that are approved.
