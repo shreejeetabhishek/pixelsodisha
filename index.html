@@ -16,13 +16,39 @@
     <style>
         body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; overflow: hidden; background: #121212; color: #e0e0e0; }
         
-        /* Dark Mode Sidebar */
-        #sidebar { width: 360px; background: #1e1e2f; border-right: 1px solid #2a2a40; padding: 20px; overflow-y: auto; box-sizing: border-box; z-index: 10; box-shadow: 4px 0 15px rgba(0,0,0,0.5); }
-        #map-container { flex-grow: 1; position: relative; height: 100vh; display: flex; flex-direction: column; }
+        /* Sliding Dark Mode Sidebar */
+        #sidebar { 
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 360px; 
+            max-width: 90vw; /* Prevents overflow on very small phones */
+            background: #1e1e2f; 
+            border-right: 1px solid #2a2a40; 
+            padding: 20px; 
+            overflow-y: auto; 
+            box-sizing: border-box; 
+            z-index: 2000; /* Stays above the map */
+            box-shadow: 4px 0 15px rgba(0,0,0,0.5); 
+            transform: translateX(0);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Collapse state class */
+        body.sidebar-closed #sidebar {
+            transform: translateX(-100%);
+            box-shadow: none;
+        }
+
+        #map-container { flex-grow: 1; position: relative; height: 100vh; width: 100vw; display: flex; flex-direction: column; }
         #map { flex-grow: 1; background-color: #0a0a10; width: 100%; height: 100%; }
         
         /* Typography & Controls */
-        h2 { font-size: 15px; margin-top: 0; color: #4da8da; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #2a2a40; padding-bottom: 8px; margin-bottom: 15px; }
+        h2 { font-size: 15px; margin-top: 0; color: #4da8da; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #2a2a40; padding-bottom: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .close-sidebar-btn { background: none; border: none; color: #a0a0b5; font-size: 20px; cursor: pointer; }
+        .close-sidebar-btn:hover { color: #fff; }
+        
         .control-panel { background: #252538; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #33334d; }
         
         label { font-size: 12px; color: #a0a0b5; font-weight: 600; text-transform: uppercase; margin-top: 8px; display: block; }
@@ -39,11 +65,8 @@
         .worker-name { font-weight: 600; font-size: 14px; color: #fff; display: flex; justify-content: space-between; align-items: center; }
         .role-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #33334d; color: #a0a0b5; text-transform: uppercase; }
         
-        /* 
-         * PROFESSIONAL MAP BADGES 
-         */
+        /* PROFESSIONAL MAP BADGES */
         .transparent-icon { overflow: visible !important; }
-        
         .manpower-badge { 
             position: absolute; transform: translate(-50%, -50%);
             background: rgba(20, 20, 35, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -60,10 +83,7 @@
         .worker-item { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px; margin-bottom: 2px; }
         .worker-item:last-child { border: none; margin: 0; padding: 0; }
         
-        /* 
-         * ADVANCED ANIMATIONS & MACHINE STATUS
-         */
-        /* The LED Light */
+        /* ADVANCED ANIMATIONS & MACHINE STATUS */
         .led { width: 12px; height: 12px; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px currentColor; }
         .led-running { background: #00ff00; color: #00ff00; animation: blink-fast 0.5s infinite; }
         .led-maintenance { background: #ffaa00; color: #ffaa00; animation: blink-slow 2s infinite; }
@@ -71,32 +91,43 @@
         
         @keyframes blink-fast { 0% {opacity: 1; box-shadow: 0 0 12px currentColor;} 50% {opacity: 0.3; box-shadow: 0 0 2px currentColor;} 100% {opacity: 1; box-shadow: 0 0 12px currentColor;} }
         @keyframes blink-slow { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
-
-        /* Flowing Lines for Pipes/Conveyors */
         .flowing-line { animation: dash-flow 1s linear infinite; }
         @keyframes dash-flow { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
-
-        /* Pulsing Polygons for Active Machines */
         .pulsing-zone { animation: zone-pulse 2s ease-in-out infinite; }
         @keyframes zone-pulse { 0% { fill-opacity: 0.1; } 50% { fill-opacity: 0.4; } 100% { fill-opacity: 0.1; } }
 
-        /* Full Screen Button */
-        .fullscreen-btn { position: absolute; top: 15px; right: 15px; z-index: 1000; background: #1e1e2f; color: #4da8da; border: 1px solid #4da8da; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 700; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .fullscreen-btn:hover { background: #4da8da; color: #000; }
-
-        @media (max-width: 768px) {
-            body:not(.fullscreen-mode) { flex-direction: column; }
-            body:not(.fullscreen-mode) #map-container { height: 55vh; flex-grow: 0; }
-            body:not(.fullscreen-mode) #sidebar { height: 45vh; width: 100%; border-right: none; border-top: 2px solid #33334d; }
+        /* Floating UI Buttons */
+        .floating-btn-group {
+            position: absolute; top: 15px; left: 15px; z-index: 1000; display: flex; gap: 10px;
         }
-        body.fullscreen-mode #sidebar { display: none !important; }
-        body.fullscreen-mode #map-container { height: 100vh; width: 100vw; }
+        .ui-btn { 
+            background: #1e1e2f; color: #4da8da; border: 1px solid #4da8da; 
+            padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 700; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 5px;
+            transition: all 0.2s;
+        }
+        .ui-btn:hover { background: #4da8da; color: #000; }
+        
+        /* Adjust Leaflet Draw Control Position so it doesn't overlap menu button */
+        .leaflet-top.leaflet-left { top: 60px; left: 5px; }
     </style>
 </head>
-<body>
+<body class="sidebar-closed"> <!-- Starts closed for full map view -->
+
+    <!-- Floating Buttons over the Map -->
+    <div class="floating-btn-group">
+        <button class="ui-btn" onclick="toggleSidebar()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            Menu
+        </button>
+        <button class="ui-btn" onclick="map.fitBounds(bounds)">
+            &#x26F6; Recenter Map
+        </button>
+    </div>
+
+    <!-- The Slide-In Menu -->
     <div id="sidebar">
-        
-        <h2>1. Machine / Site Settings</h2>
+        <h2>1. Machine / Site Settings <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button></h2>
         <div class="control-panel">
             <label>Select Drawn Zone</label>
             <select id="settingZoneSelect" onchange="loadZoneSettings()"></select>
@@ -136,13 +167,14 @@
     </div>
 
     <div id="map-container">
-        <button class="fullscreen-btn" onclick="toggleFullscreen()">&#x26F6; Full Screen</button>
         <div id="map"></div>
     </div>
     
     <script>
-        function toggleFullscreen() {
-            document.body.classList.toggle('fullscreen-mode');
+        // --- SLIDE NAVIGATION LOGIC ---
+        function toggleSidebar() {
+            document.body.classList.toggle('sidebar-closed');
+            // Leaflet needs to recalculate canvas size after UI shifts
             setTimeout(() => { map.invalidateSize(); }, 300);
         }
 
@@ -157,13 +189,10 @@
         }
 
         // --- MAP INITIALIZATION ---
-        // Using a dark background to make LEDs pop
         const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2, maxZoom: 4 });
         const imgWidth = 2000; const imgHeight = 1500; 
         const bounds = [[0, 0], [imgHeight, imgWidth]];
         
-        // Add a slight CSS invert filter to the image to make it dark mode if desired, 
-        // but leaving standard for now so it matches their diagram.
         L.imageOverlay('F_D1.jpg', bounds).addTo(map);
         map.fitBounds(bounds);
 
@@ -190,7 +219,6 @@
             var zoneName = prompt("Enter a name for this Location/Route:");
             if (!zoneName) return; 
 
-            // Default new zones to 'running'
             let newZone = { id: 'z_' + Date.now(), name: zoneName, type: type, status: 'running' };
             if (type === 'marker') { newZone.latlng = layer.getLatLng(); } 
             else { newZone.latlngs = layer.getLatLngs(); }
@@ -239,7 +267,6 @@
             Object.values(badgeMarkers).forEach(m => map.removeLayer(m));
             badgeMarkers = {};
             
-            // Gather workers
             const zoneWorkers = {};
             zones.forEach(z => zoneWorkers[z.id] = []);
             workers.forEach(w => { if(w.zoneId && zoneWorkers[w.zoneId]) zoneWorkers[w.zoneId].push(w); });
@@ -248,7 +275,6 @@
                 let centerPoint;
                 let shapeLayer;
                 
-                // Determine styling based on status
                 const stat = zone.status || 'running';
                 let baseColor = stat === 'running' ? '#00ff00' : (stat === 'maintenance' ? '#ffaa00' : '#ff0000');
                 let cssClass = '';
@@ -277,7 +303,6 @@
                 const assignedWorkers = zoneWorkers[zone.id];
                 const count = assignedWorkers.length;
                 
-                // Always draw a badge for zones (to show LED status), optionally for lines if they have workers
                 if (zone.type !== 'polyline' || count > 0) {
                     
                     let workersHtml = '';
