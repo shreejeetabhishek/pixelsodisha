@@ -1,26 +1,16 @@
-# Plant Tracker – Draggable Zone Badge Anchors (v4)
+# Plant Tracker – Mobile Badge Positioning Fix v5
 
-## What's changed
-- Zone status/personnel badges are now draggable on both Engineering Drawing and Satellite View.
-- Dragging a badge stores its own anchor coordinate on the corresponding zone.
-- Badge anchors remain fixed in map coordinates while zooming and panning.
-- Removed automatic collision-offset positioning that previously moved badges away from the equipment/zone location.
-- New polygon badges default to a polygon area centroid; rectangles/lines/markers use a geometry-derived fallback.
-- Existing zone geometry, satellite registration and localStorage data are retained.
-
-## How to position badges
-1. Open Engineering Drawing.
-2. Touch and hold a zone badge, then drag it to the desired equipment location (for example, the X-marked points in your screenshot).
-3. Release. The badge position is saved automatically.
-4. Repeat for each zone.
-5. Switch to Satellite View and independently position a satellite badge if required. Its position is saved separately in geographic coordinates.
-
-## Important
-- Badge position is an independent display anchor. Moving a badge does not move or resize the zone boundary.
-- Engineering and satellite badge positions are stored in their respective coordinate systems. If you transfer zone geometry, position the satellite badge after transfer if the desired equipment point differs.
-- This update intentionally disables automatic badge collision shifting. If two badges overlap, drag one to a clear position.
-- Data remains in browser LocalStorage; it is not synced across devices.
-- Validate all zones and geographic alignment against known site features before operational use.
+## What changed
+- Fixed the Leaflet zero-size `DivIcon` positioning: the badge card is explicitly centred on its geographic anchor (`left:0; top:0; translate(-50%,-50%)`).
+- Mobile badge cards now use a narrower responsive width and compact typography so their visual centre remains on the zone anchor.
+- Old saved badge offsets from earlier versions are treated as legacy and ignored. By default, polygon/rectangle badges are recalculated from the zone's polygon centroid; marker/polyline badges use their geometry centre.
+- A manually dragged badge is saved with an explicit `badgeAnchorMode: "manual"` flag and remains at that chosen map coordinate.
+- The same rules apply in Engineering and Satellite views. Zooming and panning do not change the geographic anchor.
 
 ## Deploy
-Replace `index.html` and `F_D1.jpg` in your GitHub Pages repository. Keep them in the same directory. Do not clear browser site data.
+1. Replace `index.html` and `F_D1.jpg` in the GitHub Pages repository.
+2. Keep both files in the same directory.
+3. Hard-refresh the page on the phone after deployment. Existing zone geometry, workers and four-point map registration are preserved in browser storage.
+
+## Note
+This corrects responsive marker anchoring and defaults badge placement to zone geometry. For irregular or multi-part polygons, inspect the calculated centroid and manually reposition only if the equipment itself is not at the geometric centre. Manual positions are saved independently of zone boundaries.

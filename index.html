@@ -57,7 +57,9 @@
         /* 
          * UPGRADED MAP BADGES WITH EMOJI SYMBOLS
          */
-        .transparent-icon { overflow: visible !important; }
+        .transparent-icon { overflow: visible !important; width:0 !important; height:0 !important; margin:0 !important; border:0 !important; background:transparent !important; }
+        .leaflet-marker-icon.transparent-icon { pointer-events:none; }
+        .leaflet-marker-icon.transparent-icon .manpower-badge { pointer-events:auto; position:absolute !important; left:0 !important; top:0 !important; transform:translate(-50%,-50%) scale(var(--badge-scale,1)) !important; transform-origin:50% 50% !important; }
         .manpower-badge { 
             position: absolute; transform: translate(-50%, -50%);
             background: rgba(20, 20, 35, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -223,7 +225,23 @@
         #satellite-map .manpower-badge { max-width:140px !important; }
         .leaflet-draw-toolbar a, .leaflet-control-zoom a { width:38px !important; height:38px !important; line-height:38px !important; }
         .leaflet-control-container { z-index:900; }
+        /* Mobile badge anchoring: the geographic coordinate is the badge centre. */
+        .leaflet-marker-icon.transparent-icon { width:0 !important; height:0 !important; margin:0 !important; }
+        .leaflet-marker-icon.transparent-icon > .manpower-badge { left:0 !important; top:0 !important; margin:0 !important; }
         @media (max-width:640px) {
+            .leaflet-marker-icon.transparent-icon > .manpower-badge {
+                max-width:min(126px, 38vw) !important;
+                width:max-content !important;
+                padding:5px 7px !important;
+                font-size:11px !important;
+                white-space:normal !important;
+                line-height:1.2 !important;
+                --badge-scale: .92;
+            }
+            .leaflet-marker-icon.transparent-icon .badge-header { min-width:0; }
+            .leaflet-marker-icon.transparent-icon .badge-zone { max-width:76px !important; overflow:hidden; text-overflow:ellipsis; }
+            .leaflet-marker-icon.transparent-icon .badge-count { white-space:nowrap; }
+            .leaflet-marker-icon.transparent-icon .badge-drag-note { display:none !important; }
             .floating-btn-group {
                 top:5px; left:7px; right:7px; max-width:calc(100% - 14px);
                 display:grid; grid-template-columns:minmax(0,.78fr) minmax(0,1.42fr) minmax(0,1.18fr);
@@ -1071,6 +1089,7 @@
             marker.on('dragend', function () {
                 const p = marker.getLatLng();
                 zone.badgeAnchor = { lat:p.lat, lng:p.lng };
+                zone.badgeAnchorMode = 'manual';
                 marker._badgeAnchor = L.latLng(p.lat,p.lng);
                 if (storageKind === 'engineering') {
                     persistPlantData();
@@ -1102,7 +1121,7 @@
         }
 
         function defaultEngineeringBadgeAnchor(zone, shapeLayer, fallback) {
-            if (validBadgeAnchor(zone.badgeAnchor)) return L.latLng(Number(zone.badgeAnchor.lat), Number(zone.badgeAnchor.lng));
+            if (zone.badgeAnchorMode === 'manual' && validBadgeAnchor(zone.badgeAnchor)) return L.latLng(Number(zone.badgeAnchor.lat), Number(zone.badgeAnchor.lng));
             if ((zone.type==='polygon' || zone.type==='rectangle') && zone.latlngs) {
                 const c=polygonCentroidLatLngs(zone.latlngs);
                 if (c) return c;
@@ -1111,7 +1130,7 @@
         }
 
         function defaultSatelliteBadgeAnchor(zone, fallback) {
-            if (validBadgeAnchor(zone.badgeAnchor)) return L.latLng(Number(zone.badgeAnchor.lat), Number(zone.badgeAnchor.lng));
+            if (zone.badgeAnchorMode === 'manual' && validBadgeAnchor(zone.badgeAnchor)) return L.latLng(Number(zone.badgeAnchor.lat), Number(zone.badgeAnchor.lng));
             return fallback ? L.latLng(fallback) : null;
         }
 
