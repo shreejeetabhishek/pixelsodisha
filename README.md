@@ -1,12 +1,12 @@
-# Steel Plant Tracker - Slide Navigation Update
+# Steel Plant Tracker - Zoom Scaling Update
 
-This version solves the mobile squishing issue shown in your image by converting the sidebar into a true collapsible slide-in menu overlay.
+This update introduces dynamic CSS scaling to the map badges, solving the issue of badges overlapping and clustering when the map is fully zoomed out on a mobile device.
 
 ## Key Changes:
-1. **Collapsible Sidebar**: The sidebar is now an overlay that slides smoothly in and out from the left.
-2. **Floating Action Menu**: A permanent "☰ Menu" button floats on the top left of the map to toggle the sidebar.
-3. **Map Re-centering**: Replaced the "Full Screen" button with a handy "Recenter Map" button next to the Menu toggle, so you can easily snap back to the full schematic view if you zoom in too far.
-4. **Starts Closed**: The application loads with the menu closed by default so you instantly see 100% of your flow diagram.
+1. **Dynamic Visibility based on Zoom**: 
+   - When you are **zoomed in** (`zoom: 0` or higher), the badge shows full details: Location, count, and the exact names and roles of every worker.
+   - When you zoom out slightly (`zoom: -1`), the badge shrinks, hiding the long list of workers to save space, but keeping the zone name and headcount visible.
+   - When you **zoom all the way out** (`zoom: -2`), the badge collapses completely into just the animated LED light. This gives you a clear, uncluttered view of the entire plant floor and its overall machine statuses (Green/Amber/Red dots) without text overlap.
 
 ## Instructions:
 1. Extract the ZIP.

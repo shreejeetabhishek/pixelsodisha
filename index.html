@@ -23,19 +23,18 @@
             top: 0;
             bottom: 0;
             width: 360px; 
-            max-width: 90vw; /* Prevents overflow on very small phones */
+            max-width: 90vw; 
             background: #1e1e2f; 
             border-right: 1px solid #2a2a40; 
             padding: 20px; 
             overflow-y: auto; 
             box-sizing: border-box; 
-            z-index: 2000; /* Stays above the map */
+            z-index: 2000; 
             box-shadow: 4px 0 15px rgba(0,0,0,0.5); 
             transform: translateX(0);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
-        /* Collapse state class */
         body.sidebar-closed #sidebar {
             transform: translateX(-100%);
             box-shadow: none;
@@ -60,31 +59,61 @@
         button.danger-btn { background: #dc3545; color: white; }
         button.danger-btn:hover { background: #c82333; }
         
-        /* Worker List styling */
         .worker-card { background: #2a2a40; padding: 12px; margin-bottom: 10px; border-left: 4px solid #4da8da; border-radius: 4px; }
         .worker-name { font-weight: 600; font-size: 14px; color: #fff; display: flex; justify-content: space-between; align-items: center; }
         .role-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #33334d; color: #a0a0b5; text-transform: uppercase; }
         
-        /* PROFESSIONAL MAP BADGES */
+        /* 
+         * PROFESSIONAL MAP BADGES 
+         * Added custom CSS scaling based on map classes
+         */
         .transparent-icon { overflow: visible !important; }
+        
         .manpower-badge { 
             position: absolute; transform: translate(-50%, -50%);
             background: rgba(20, 20, 35, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             color: white; padding: 12px 18px; border-radius: 8px; text-align: center; 
             border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 8px 24px rgba(0,0,0,0.5); 
             white-space: nowrap; pointer-events: none; min-width: 130px;
+            transition: all 0.3s ease;
         }
         
         .badge-header { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
-        .badge-zone { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
-        .badge-count { font-size: 12px; font-weight: 600; color: #a0a0b5; }
+        .badge-zone { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.3s; }
+        .badge-count { font-size: 12px; font-weight: 600; color: #a0a0b5; transition: all 0.3s; }
         
-        .badge-workers { font-size: 12px; font-weight: 500; margin-top: 8px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; white-space: normal; max-width: 200px; text-align: left; line-height: 1.5; display: inline-block; }
+        .badge-workers { font-size: 12px; font-weight: 500; margin-top: 8px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; white-space: normal; max-width: 200px; text-align: left; line-height: 1.5; display: inline-block; transition: all 0.3s; }
         .worker-item { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px; margin-bottom: 2px; }
         .worker-item:last-child { border: none; margin: 0; padding: 0; }
         
+        /* 
+         * ZOOM LEVEL STYLING 
+         * Handles the scaling and hiding of badge elements when zoomed out
+         */
+        
+        /* Zoom Level < -1 (Fully Zoomed Out - e.g. -2) */
+        .zoom-level-out .manpower-badge {
+            padding: 4px 8px;
+            min-width: auto;
+            background: rgba(20, 20, 35, 0.95);
+        }
+        .zoom-level-out .badge-header { margin: 0; padding: 0; border: none; }
+        .zoom-level-out .badge-zone { display: none; } /* Hide Zone Name */
+        .zoom-level-out .badge-count { display: none; } /* Hide Count Text */
+        .zoom-level-out .badge-workers { display: none; } /* Hide Worker List */
+        .zoom-level-out .led { margin: 0; transform: scale(1.5); } /* Just show a larger LED dot */
+        
+        /* Zoom Level -1 (Mid-level Zoom) */
+        .zoom-level-mid .manpower-badge {
+            padding: 8px 12px;
+            min-width: 100px;
+        }
+        .zoom-level-mid .badge-zone { font-size: 11px; }
+        .zoom-level-mid .badge-workers { display: none; } /* Hide Worker List to save space */
+        .zoom-level-mid .badge-count { font-size: 10px; }
+
         /* ADVANCED ANIMATIONS & MACHINE STATUS */
-        .led { width: 12px; height: 12px; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px currentColor; }
+        .led { width: 12px; height: 12px; border-radius: 50%; display: inline-block; box-shadow: 0 0 5px currentColor; transition: transform 0.3s; }
         .led-running { background: #00ff00; color: #00ff00; animation: blink-fast 0.5s infinite; }
         .led-maintenance { background: #ffaa00; color: #ffaa00; animation: blink-slow 2s infinite; }
         .led-offline { background: #ff0000; color: #ff0000; }
@@ -97,9 +126,7 @@
         @keyframes zone-pulse { 0% { fill-opacity: 0.1; } 50% { fill-opacity: 0.4; } 100% { fill-opacity: 0.1; } }
 
         /* Floating UI Buttons */
-        .floating-btn-group {
-            position: absolute; top: 15px; left: 15px; z-index: 1000; display: flex; gap: 10px;
-        }
+        .floating-btn-group { position: absolute; top: 15px; left: 15px; z-index: 1000; display: flex; gap: 10px; }
         .ui-btn { 
             background: #1e1e2f; color: #4da8da; border: 1px solid #4da8da; 
             padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 700; 
@@ -108,11 +135,11 @@
         }
         .ui-btn:hover { background: #4da8da; color: #000; }
         
-        /* Adjust Leaflet Draw Control Position so it doesn't overlap menu button */
+        /* Adjust Leaflet Draw Control */
         .leaflet-top.leaflet-left { top: 60px; left: 5px; }
     </style>
 </head>
-<body class="sidebar-closed"> <!-- Starts closed for full map view -->
+<body class="sidebar-closed">
 
     <!-- Floating Buttons over the Map -->
     <div class="floating-btn-group">
@@ -127,7 +154,7 @@
 
     <!-- The Slide-In Menu -->
     <div id="sidebar">
-        <h2>1. Machine / Site Settings <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button></h2>
+        <h2>1. Machine Settings <button class="close-sidebar-btn" onclick="toggleSidebar()">&times;</button></h2>
         <div class="control-panel">
             <label>Select Drawn Zone</label>
             <select id="settingZoneSelect" onchange="loadZoneSettings()"></select>
@@ -174,11 +201,10 @@
         // --- SLIDE NAVIGATION LOGIC ---
         function toggleSidebar() {
             document.body.classList.toggle('sidebar-closed');
-            // Leaflet needs to recalculate canvas size after UI shifts
             setTimeout(() => { map.invalidateSize(); }, 300);
         }
 
-        // --- DATABASE SETUP (v3 for new structure) ---
+        // --- DATABASE SETUP (v3) ---
         let zones = JSON.parse(localStorage.getItem('plant_zones_v3')) || [];
         let workers = JSON.parse(localStorage.getItem('plant_workers_v3')) || [];
         
@@ -195,6 +221,28 @@
         
         L.imageOverlay('F_D1.jpg', bounds).addTo(map);
         map.fitBounds(bounds);
+
+        // --- ZOOM EVENT LISTENER FOR SCALING BADGES ---
+        function updateMapZoomClass() {
+            const currentZoom = map.getZoom();
+            const mapContainer = document.getElementById('map');
+            
+            // Remove previous classes
+            mapContainer.classList.remove('zoom-level-out', 'zoom-level-mid');
+            
+            if (currentZoom < -1) {
+                // Fully zoomed out: Show only tiny dots
+                mapContainer.classList.add('zoom-level-out');
+            } else if (currentZoom === -1) {
+                // Mid-zoom: Show count/title but hide long worker list
+                mapContainer.classList.add('zoom-level-mid');
+            }
+            // Zoom >= 0: Default full badge size is active
+        }
+        
+        // Run on load and every time zoom changes
+        map.on('zoomend', updateMapZoomClass);
+        updateMapZoomClass(); // Initial trigger
 
         // --- DRAWING TOOLS ---
         var drawnItems = new L.FeatureGroup();
@@ -303,6 +351,7 @@
                 const assignedWorkers = zoneWorkers[zone.id];
                 const count = assignedWorkers.length;
                 
+                // Always draw a badge for zones, optionally for lines if they have workers
                 if (zone.type !== 'polyline' || count > 0) {
                     
                     let workersHtml = '';
