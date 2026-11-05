@@ -25,7 +25,15 @@
         
         body.sidebar-closed #sidebar { transform: translateX(-100%); box-shadow: none; }
         #map-container { flex-grow: 1; position: relative; height: 100vh; width: 100vw; display: flex; flex-direction: column; }
-        #map { flex-grow: 1; background-color: #0a0a10; width: 100%; height: 100%; }
+        #map, #satellite-map { flex-grow: 1; background-color: #0a0a10; width: 100%; height: 100%; }
+        #satellite-map { display: none; }
+        .map-mode-btn.active { background: #4da8da; color: #08131d; }
+        .satellite-panel { position: absolute; top: 72px; right: 15px; z-index: 1100; width: min(310px, calc(100vw - 30px)); background: rgba(20,20,35,.96); border: 1px solid #4da8da; border-radius: 9px; padding: 13px; box-shadow: 0 5px 18px rgba(0,0,0,.45); display: none; }
+        .satellite-panel.visible { display: block; }
+        .satellite-panel p { margin: 4px 0 9px; color: #b9c5d4; font-size: 12px; line-height: 1.45; }
+        .coordinate-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .satellite-panel button { width: 100%; margin-top: 9px; padding: 9px; border: 0; border-radius: 6px; background: #4da8da; color: #07131c; font-weight: 700; cursor: pointer; }
+        .satellite-attribution-note { position: absolute; bottom: 8px; right: 8px; z-index: 500; background: rgba(20,20,35,.8); color: #fff; padding: 4px 7px; border-radius: 4px; font-size: 10px; pointer-events: none; }
         
         h2 { font-size: 15px; margin-top: 0; color: #4da8da; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #2a2a40; padding-bottom: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
         .close-sidebar-btn { background: none; border: none; color: #a0a0b5; font-size: 20px; cursor: pointer; }
@@ -120,9 +128,9 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             Menu
         </button>
-        <button class="ui-btn" onclick="map.fitBounds(bounds)">
-            &#x26F6; Recenter Map
-        </button>
+        <button id="engineeringModeBtn" class="ui-btn map-mode-btn active" onclick="switchMapView('engineering')">Engineering Drawing</button>
+        <button id="satelliteModeBtn" class="ui-btn map-mode-btn" onclick="switchMapView('satellite')">Satellite View</button>
+        <button id="recenterBtn" class="ui-btn" onclick="recenterCurrentMap()">&#x26F6; Recenter</button>
     </div>
 
     <!-- The Slide-In Menu -->
@@ -184,12 +192,91 @@
 
     <div id="map-container">
         <div id="map"></div>
+        <div id="satellite-map"></div>
+        <div id="satellitePanel" class="satellite-panel">
+            <strong>Plant location</strong>
+            <p>Enter the plant's latitude and longitude, or click directly on the satellite map to place the site marker. The initial view is only a general India view, not your plant location.</p>
+            <div class="coordinate-row">
+                <input id="plantLatitude" type="number" step="any" placeholder="Latitude">
+                <input id="plantLongitude" type="number" step="any" placeholder="Longitude">
+            </div>
+            <button onclick="goToPlantLocation()">Go to plant location</button>
+            <p id="plantLocationStatus">No plant location saved yet.</p>
+        </div>
+        <div id="satelliteAttributionNote" class="satellite-attribution-note" style="display:none">Satellite imagery © Esri and its data providers</div>
     </div>
     
     <script>
+        let currentMapView = 'engineering';
+        let satelliteMap = null;
+        let plantSiteMarker = null;
+        let plantSite = JSON.parse(localStorage.getItem('plant_site_location_v1') || 'null');
+
         function toggleSidebar() {
             document.body.classList.toggle('sidebar-closed');
-            setTimeout(() => { map.invalidateSize(); }, 300);
+            setTimeout(() => { map.invalidateSize(); if (satelliteMap) satelliteMap.invalidateSize(); }, 300);
+        }
+
+        function initializeSatelliteMap() {
+            if (satelliteMap) return;
+            satelliteMap = L.map('satellite-map', { zoomControl: true, preferCanvas: true }).setView([20.5937, 78.9629], 5);
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+            }).addTo(satelliteMap);
+            satelliteMap.on('click', function (event) { setPlantSite(event.latlng.lat, event.latlng.lng, true); });
+            if (plantSite && Number.isFinite(plantSite.lat) && Number.isFinite(plantSite.lng)) {
+                document.getElementById('plantLatitude').value = plantSite.lat;
+                document.getElementById('plantLongitude').value = plantSite.lng;
+                placePlantMarker(plantSite.lat, plantSite.lng);
+                document.getElementById('plantLocationStatus').textContent = 'Saved plant location: ' + plantSite.lat.toFixed(6) + ', ' + plantSite.lng.toFixed(6);
+            }
+        }
+
+        function switchMapView(view) {
+            currentMapView = view;
+            const engineering = view === 'engineering';
+            document.getElementById('map').style.display = engineering ? 'block' : 'none';
+            document.getElementById('satellite-map').style.display = engineering ? 'none' : 'block';
+            document.getElementById('satellitePanel').classList.toggle('visible', !engineering);
+            document.getElementById('satelliteAttributionNote').style.display = engineering ? 'none' : 'block';
+            document.getElementById('engineeringModeBtn').classList.toggle('active', engineering);
+            document.getElementById('satelliteModeBtn').classList.toggle('active', !engineering);
+            if (!engineering) initializeSatelliteMap();
+            setTimeout(() => { if (engineering) map.invalidateSize(); else satelliteMap.invalidateSize(); }, 100);
+        }
+
+        function recenterCurrentMap() {
+            if (currentMapView === 'engineering') map.fitBounds(bounds);
+            else if (plantSite && satelliteMap) satelliteMap.setView([plantSite.lat, plantSite.lng], 17);
+            else if (satelliteMap) satelliteMap.setView([20.5937, 78.9629], 5);
+        }
+
+        function placePlantMarker(lat, lng) {
+            if (!satelliteMap) return;
+            if (plantSiteMarker) satelliteMap.removeLayer(plantSiteMarker);
+            plantSiteMarker = L.marker([lat, lng]).addTo(satelliteMap).bindPopup('<strong>Plant site reference</strong><br>Confirm this position before using it operationally.').openPopup();
+        }
+
+        function setPlantSite(lat, lng, fromMapClick) {
+            plantSite = { lat: Number(lat), lng: Number(lng) };
+            localStorage.setItem('plant_site_location_v1', JSON.stringify(plantSite));
+            document.getElementById('plantLatitude').value = plantSite.lat.toFixed(6);
+            document.getElementById('plantLongitude').value = plantSite.lng.toFixed(6);
+            document.getElementById('plantLocationStatus').textContent = 'Saved plant location: ' + plantSite.lat.toFixed(6) + ', ' + plantSite.lng.toFixed(6);
+            placePlantMarker(plantSite.lat, plantSite.lng);
+            if (fromMapClick) satelliteMap.setView([plantSite.lat, plantSite.lng], Math.max(satelliteMap.getZoom(), 16));
+        }
+
+        function goToPlantLocation() {
+            const lat = Number(document.getElementById('plantLatitude').value);
+            const lng = Number(document.getElementById('plantLongitude').value);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                alert('Enter a valid latitude (-90 to 90) and longitude (-180 to 180).');
+                return;
+            }
+            setPlantSite(lat, lng, false);
+            satelliteMap.setView([lat, lng], 17);
         }
 
         // --- DATABASE SETUP (v4) ---
