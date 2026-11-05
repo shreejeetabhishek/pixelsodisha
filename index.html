@@ -334,19 +334,19 @@
         </div>
         <div id="transferPanel" class="connection-panel transfer-panel">
             <strong>Transfer engineering zones to satellite</strong>
-            <p>Align the two independent maps using three matching reference points, then transfer a selected engineering zone.</p>
+            <p>Register the engineering drawing to the satellite map using FOUR matching physical landmarks. Then transfer a zone using the saved registration. Use widely spaced points around the plant.</p>
             <label for="transferZoneSelect">Engineering zone to transfer</label>
             <select id="transferZoneSelect"><option value="">-- Select engineering zone --</option></select>
             <div class="connection-actions">
-                <button class="primary" onclick="beginZoneAlignment()">Align maps (3 points)</button>
+                <button class="primary" onclick="beginZoneAlignment()">Register maps (4 points)</button>
                 <button onclick="transferSelectedZone()" id="transferZoneBtn" disabled>Transfer selected zone</button>
                 <button onclick="cancelZoneAlignment()">Cancel alignment</button>
                 <button onclick="toggleTransferPanel()">Close</button>
             </div>
-            <p id="transferStatus" class="connection-status">No alignment saved. Engineering zones remain unchanged.</p>
+            <p id="transferStatus" class="connection-status">No verified 4-point registration. Linked labels alone do NOT align map geometry.</p>
             <div class="zone-link-panel">
                 <strong>Link independently drawn zones</strong>
-                <p>Draw the real-world zone on Satellite View, then pair it with its corresponding engineering zone. The shapes stay independently editable but share one logical identity.</p>
+                <p><b>Important:</b> Linking shares status and personnel only. It does NOT move or align the geometry. For spatial alignment, use Register maps and Transfer selected zone above.</p>
                 <label for="linkEngineeringZone">Engineering drawing zone</label>
                 <select id="linkEngineeringZone"></select>
                 <label for="linkSatelliteZone">Satellite view zone</label>
@@ -388,9 +388,18 @@
         let satelliteDrawnItems = null;
         let satelliteZoneBadgeMarkers = {};
         let satelliteDrawControl = null;
-        let zoneAlignment = { active:false, phase:'source', pairs:[] };
-        let zoneAlignmentTransform = JSON.parse(localStorage.getItem('plant_zone_alignment_v1') || 'null');
+        let zoneAlignment = { active:false, phase:'source', pairs:[], pendingSource:null };
+        // Only accept the new four-control-point projective transform.
+        // Older three-point affine transforms are intentionally ignored because
+        // they can produce large positional errors over a plant-sized drawing.
+        let zoneAlignmentTransform = (() => {
+            try {
+                const saved = JSON.parse(localStorage.getItem('plant_zone_alignment_v1') || 'null');
+                return saved && saved.version === 2 && Array.isArray(saved.h) && saved.h.length === 8 ? saved : null;
+            } catch (_) { return null; }
+        })();
         let satellitePanelDismissed = false;
+        document.addEventListener('DOMContentLoaded', () => { const b=document.getElementById('transferZoneBtn'); if (b) b.disabled = !(zoneAlignmentTransform && zoneAlignmentTransform.version===2); });
         let plantLocationPicking = false;
 
         function toggleSidebar() {
@@ -643,60 +652,180 @@
 
         function beginZoneAlignment() {
             if (!satelliteMap) initializeSatelliteMap();
-            zoneAlignment={active:true,phase:'source',pairs:[]};
-            document.getElementById('transferStatus').textContent='Point 1: click a recognizable reference point on the Engineering Drawing, then switch to Satellite View and click the same physical point.';
+            zoneAlignment = {active:true, phase:'source', pairs:[], pendingSource:null};
+            document.getElementById('transferStatus').textContent =
+                'Registration 1/4: tap a clear, permanent landmark on the engineering drawing. Then tap the SAME physical landmark in Satellite View.';
             switchMapView('engineering');
         }
 
         function captureEngineeringAlignmentPoint(latlng) {
-            if (!zoneAlignment.active || currentMapView!=='engineering' || zoneAlignment.phase!=='source') return false;
-            zoneAlignment.pendingSource=[latlng.lng,latlng.lat]; zoneAlignment.phase='target';
-            document.getElementById('transferStatus').textContent='Switch to Satellite View and click the same physical reference point.';
+            if (!zoneAlignment.active || currentMapView !== 'engineering' || zoneAlignment.phase !== 'source') return false;
+            zoneAlignment.pendingSource = [Number(latlng.lng), Number(latlng.lat)];
+            zoneAlignment.phase = 'target';
+            const n = zoneAlignment.pairs.length + 1;
+            document.getElementById('transferStatus').textContent =
+                'Point ' + n + '/4 captured on drawing. Switch to Satellite View and tap the exact same physical landmark.';
             return true;
         }
 
         function captureSatelliteAlignmentPoint(latlng) {
-            if (!zoneAlignment.active || currentMapView!=='satellite' || zoneAlignment.phase!=='target') return false;
-            const projected=L.CRS.EPSG3857.project(latlng);
-            zoneAlignment.pairs.push({source:zoneAlignment.pendingSource,target:[projected.x,projected.y]});
-            if (zoneAlignment.pairs.length===3) {
-                const t=calculateAffineTransform(zoneAlignment.pairs);
-                if (!t) { cancelZoneAlignment(); document.getElementById('transferStatus').textContent='Alignment failed. Choose three non-collinear reference points.'; return; }
-                zoneAlignmentTransform=t; localStorage.setItem('plant_zone_alignment_v1',JSON.stringify(t));
-                zoneAlignment={active:false,phase:'source',pairs:[]};
-                document.getElementById('transferZoneBtn').disabled=false;
-                document.getElementById('transferStatus').textContent='Alignment saved. Select an engineering zone and transfer it.';
-                return;
+            if (!zoneAlignment.active || currentMapView !== 'satellite' || zoneAlignment.phase !== 'target' || !zoneAlignment.pendingSource) return false;
+            const projected = L.CRS.EPSG3857.project(latlng);
+            zoneAlignment.pairs.push({
+                source: zoneAlignment.pendingSource.slice(),
+                target: [projected.x, projected.y]
+            });
+            zoneAlignment.pendingSource = null;
+
+            if (zoneAlignment.pairs.length === 4) {
+                const transform = calculateProjectiveTransform(zoneAlignment.pairs);
+                if (!transform) {
+                    zoneAlignment = {active:false, phase:'source', pairs:[], pendingSource:null};
+                    document.getElementById('transferStatus').textContent =
+                        'Registration failed: the four points are too close together or nearly collinear. Start again with four widely spaced landmarks.';
+                    return true;
+                }
+                zoneAlignmentTransform = transform;
+                localStorage.setItem('plant_zone_alignment_v1', JSON.stringify(transform));
+                zoneAlignment = {active:false, phase:'source', pairs:[], pendingSource:null};
+                document.getElementById('transferZoneBtn').disabled = false;
+                document.getElementById('transferStatus').textContent =
+                    '4-point registration saved. Select an engineering zone and transfer it. Verify the result against visible site features before use.';
+                return true;
             }
-            zoneAlignment.phase='source';
-            const n=zoneAlignment.pairs.length+1;
-            document.getElementById('transferStatus').textContent='Reference point '+zoneAlignment.pairs.length+' saved. Switch to Engineering Drawing and click reference point '+n+'. Choose three well-spaced points.';
+
+            const next = zoneAlignment.pairs.length + 1;
+            zoneAlignment.phase = 'source';
+            document.getElementById('transferStatus').textContent =
+                'Point ' + zoneAlignment.pairs.length + '/4 paired. Switch to Engineering Drawing and tap landmark ' + next + '. Use points spread around the plant, not in one small area.';
             switchMapView('engineering');
+            return true;
         }
 
-        function calculateAffineTransform(pairs) {
-            const a=pairs.map(p=>[p.source[0],p.source[1],1]);
-            const solve=values=>{ const m=a.map((r,i)=>[...r,values[i]]); for(let i=0;i<3;i++){let pivot=i;for(let j=i+1;j<3;j++)if(Math.abs(m[j][i])>Math.abs(m[pivot][i]))pivot=j;if(Math.abs(m[pivot][i])<1e-10)return null;[m[i],m[pivot]]=[m[pivot],m[i]];const d=m[i][i];for(let k=i;k<4;k++)m[i][k]/=d;for(let j=0;j<3;j++)if(j!==i){const f=m[j][i];for(let k=i;k<4;k++)m[j][k]-=f*m[i][k];}}return m.map(r=>r[3]);};
-            const x=solve(pairs.map(p=>p.target[0])),y=solve(pairs.map(p=>p.target[1]));return x&&y?{x,y}:null;
+        // Solve an 8-parameter projective transform (homography) from four
+        // engineering drawing points to four Web-Mercator satellite points.
+        // Satellite coordinates are localized around their centroid to avoid
+        // numerical instability from large EPSG:3857 values.
+        function calculateProjectiveTransform(pairs) {
+            if (!Array.isArray(pairs) || pairs.length !== 4) return null;
+            const origin = [
+                pairs.reduce((sum,p) => sum + p.target[0], 0) / 4,
+                pairs.reduce((sum,p) => sum + p.target[1], 0) / 4
+            ];
+            const scale = 1000;
+            const matrix = [];
+            pairs.forEach(p => {
+                const x = Number(p.source[0]), y = Number(p.source[1]);
+                const u = (Number(p.target[0]) - origin[0]) / scale;
+                const v = (Number(p.target[1]) - origin[1]) / scale;
+                if (![x,y,u,v].every(Number.isFinite)) return;
+                matrix.push([x,y,1,0,0,0,-u*x,-u*y,u]);
+                matrix.push([0,0,0,x,y,1,-v*x,-v*y,v]);
+            });
+            if (matrix.length !== 8) return null;
+
+            // Gaussian elimination with partial pivoting.
+            for (let col=0; col<8; col++) {
+                let pivot=col;
+                for (let row=col+1; row<8; row++) {
+                    if (Math.abs(matrix[row][col]) > Math.abs(matrix[pivot][col])) pivot=row;
+                }
+                if (Math.abs(matrix[pivot][col]) < 1e-11) return null;
+                [matrix[col],matrix[pivot]]=[matrix[pivot],matrix[col]];
+                const divisor=matrix[col][col];
+                for (let k=col; k<=8; k++) matrix[col][k] /= divisor;
+                for (let row=0; row<8; row++) {
+                    if (row===col) continue;
+                    const factor=matrix[row][col];
+                    for (let k=col; k<=8; k++) matrix[row][k] -= factor*matrix[col][k];
+                }
+            }
+            const h=matrix.map(row=>row[8]);
+            if (!h.every(Number.isFinite)) return null;
+            return {version:2, h, origin, scale};
         }
 
         function transformEngineeringPoint(point) {
-            if(!zoneAlignmentTransform)return null;const t=zoneAlignmentTransform;
-            return L.CRS.EPSG3857.unproject(L.point(t.x[0]*point[0]+t.x[1]*point[1]+t.x[2],t.y[0]*point[0]+t.y[1]*point[1]+t.y[2]));
+            const t=zoneAlignmentTransform;
+            if (!t || t.version !== 2 || !Array.isArray(t.h) || t.h.length !== 8) return null;
+            const x=Number(point[0]), y=Number(point[1]), h=t.h;
+            const denominator=h[6]*x+h[7]*y+1;
+            if (!Number.isFinite(denominator) || Math.abs(denominator)<1e-10) return null;
+            const u=(h[0]*x+h[1]*y+h[2])/denominator;
+            const v=(h[3]*x+h[4]*y+h[5])/denominator;
+            const projected=L.point(t.origin[0]+u*t.scale, t.origin[1]+v*t.scale);
+            const latlng=L.CRS.EPSG3857.unproject(projected);
+            if (!Number.isFinite(latlng.lat) || !Number.isFinite(latlng.lng)) return null;
+            return latlng;
+        }
+
+        function transformEngineeringLatLngTree(node) {
+            if (Array.isArray(node)) return node.map(transformEngineeringLatLngTree);
+            if (node && typeof node === 'object' && Number.isFinite(Number(node.lat)) && Number.isFinite(Number(node.lng))) {
+                const ll=transformEngineeringPoint([Number(node.lng),Number(node.lat)]);
+                if (!ll) throw new Error('A zone vertex could not be transformed. Re-register the maps.');
+                return [ll.lat,ll.lng];
+            }
+            throw new Error('Unexpected engineering geometry. Please redraw or edit this zone before transferring.');
         }
 
         function transferSelectedZone() {
-            const id=document.getElementById('transferZoneSelect').value,src=zones.find(z=>z.id===id);
-            if(!src)return alert('Select an engineering zone first.');if(!zoneAlignmentTransform)return alert('Align the maps using three matching points first.');
-            const copy={id:'sz_transfer_'+Date.now(),name:src.name,type:src.type,status:src.status||'running',symbol:src.symbol||'',mapType:'satellite',transferredFrom:src.id};
-            if(src.type==='marker'){const ll=transformEngineeringPoint([src.latlng.lng,src.latlng.lat]);copy.latlng={lat:ll.lat,lng:ll.lng};}
-            else {const raw=src.latlngs;const pts=(Array.isArray(raw[0])?raw.flat(1):raw).map(p=>transformEngineeringPoint([p.lng,p.lat])).map(ll=>[ll.lat,ll.lng]);copy.latlngs=src.type==='polyline'?pts:[pts];}
-            satelliteZones.push(copy);localStorage.setItem('plant_satellite_zones_v1',JSON.stringify(satelliteZones));renderSatelliteZones();updateDropdowns();
-            document.getElementById('transferStatus').textContent='Transferred '+src.name+'. Verify and adjust its vertices with the satellite edit toolbar.';
-            satelliteMap.fitBounds(copy.type==='marker'?L.latLngBounds([copy.latlng,copy.latlng]).pad(1):L.latLngBounds(copy.latlngs).pad(.15));
+            const id=document.getElementById('transferZoneSelect').value;
+            const src=zones.find(z=>z.id===id);
+            if (!src) return alert('Select an engineering zone first.');
+            if (!zoneAlignmentTransform || zoneAlignmentTransform.version !== 2) return alert('Register the maps using four matching landmarks first.');
+            try {
+                const copy={
+                    id:'sz_transfer_'+Date.now(),
+                    name:src.name,
+                    type:src.type,
+                    status:src.status||'running',
+                    symbol:src.symbol||'',
+                    mapType:'satellite',
+                    transferredFrom:src.id,
+                    linkGroupId:src.linkGroupId || ('transfer_'+src.id)
+                };
+                if (src.type==='marker') {
+                    const ll=transformEngineeringPoint([src.latlng.lng,src.latlng.lat]);
+                    if (!ll) throw new Error('The marker could not be transformed.');
+                    copy.latlng={lat:ll.lat,lng:ll.lng};
+                } else {
+                    copy.latlngs=transformEngineeringLatLngTree(src.latlngs);
+                }
+
+                // Replace a previous transfer of the same engineering zone,
+                // rather than creating overlapping duplicate copies.
+                const existingIndex=satelliteZones.findIndex(z=>z.transferredFrom===src.id);
+                if (existingIndex>=0) {
+                    const previous=satelliteZones[existingIndex];
+                    copy.id=previous.id;
+                    copy.linkGroupId=previous.linkGroupId || copy.linkGroupId;
+                    satelliteZones[existingIndex]=copy;
+                } else {
+                    satelliteZones.push(copy);
+                }
+                src.linkGroupId=copy.linkGroupId;
+                persistPlantData();
+                renderDashboard();
+                renderSatelliteZones();
+                updateDropdowns();
+                refreshZoneLinkOptions();
+                document.getElementById('transferStatus').textContent=
+                    'Transferred '+src.name+' using the 4-point registration. Check the boundary at close zoom; repeat registration if it is offset.';
+                switchMapView('satellite');
+                setTimeout(() => {
+                    if (copy.type==='marker') satelliteMap.setView([copy.latlng.lat,copy.latlng.lng], Math.max(17,satelliteMap.getZoom()));
+                    else {
+                        const layer=copy.type==='polyline' ? L.polyline(copy.latlngs) : L.polygon(copy.latlngs);
+                        satelliteMap.fitBounds(layer.getBounds(),{padding:[40,40],maxZoom:19});
+                    }
+                },220);
+            } catch (error) {
+                alert('Zone transfer failed: '+error.message);
+            }
         }
 
-        function cancelZoneAlignment() { zoneAlignment={active:false,phase:'source',pairs:[]}; document.getElementById('transferStatus').textContent='Alignment cancelled. No map geometry was changed.'; }
+        function cancelZoneAlignment() { zoneAlignment={active:false,phase:'source',pairs:[],pendingSource:null}; document.getElementById('transferStatus').textContent='Alignment cancelled. No map geometry was changed.'; }
 
         // --- INDEPENDENT CONNECTION ROUTES (engineering vs geographical) ---
         function toggleConnectionPanel() {

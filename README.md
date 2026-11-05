@@ -1,28 +1,32 @@
-# Plant Tracker – Satellite Focus & Mobile Navigation Update
+# Plant Tracker – Four-Point Map Registration Fix
 
-## Included files
-- `index.html` – updated application
+## Files
+- `index.html` – updated app and four-point projective registration
 - `F_D1.jpg` – engineering drawing used by Engineering View
 
-## Changes in this update
-- Satellite View now restores the last saved map center and zoom level.
-- If no saved viewport exists, it opens at the saved plant reference at close zoom; if there is no plant reference, it fits saved satellite zones where possible.
-- Recenter now prioritizes the saved plant reference or the saved zone extent rather than returning to a country-wide view.
-- Satellite map viewport is saved locally as the user pans or zooms.
-- Mobile navigation uses a two-row responsive grid so Engineering Drawing, Satellite View, Recenter, Routes and Transfer remain visible without horizontal clipping.
-- Leaflet zoom/drawing controls are positioned below the two-row mobile navigation.
-- Satellite zone labels use viewport-aware placement and avoid collisions where possible.
-- Map clicks no longer silently change the saved plant reference. Use **Pick on map** in Plant Location Setup to deliberately choose a new reference point.
-- Existing engineering/satellite zone, status, personnel, route and local-storage workflows are retained.
+## What changed
+- Replaced the three-point affine alignment with four-point projective (homography) registration.
+- Old three-point alignment data is not trusted; perform registration again.
+- Transfers every vertex of engineering polygons, rectangles, polylines and markers.
+- Re-transferring a zone updates its previous satellite copy instead of creating duplicates.
+- Clarifies that a data link shares operational data but does not geographically align shapes.
+- After transfer, opens Satellite View at the transferred geometry.
 
-## Important limitations
-- Data is stored in browser LocalStorage. It is not synchronized across devices or users.
-- This update restores the plant location and viewport already saved in the browser; it cannot infer a different physical plant location if the saved coordinates themselves are incorrect.
-- Map alignment still requires the user to perform the three-point alignment workflow and verify the transferred geometry against known site features. Do not use unverified alignment for safety-critical decisions.
-- Leaflet and Leaflet Draw load from public CDNs; satellite imagery is provided by Esri. Internet access is required.
+## Correct registration workflow
+1. Open **Transfer zones**.
+2. Tap **Register maps (4 points)**.
+3. On Engineering Drawing, tap a permanent landmark identifiable in satellite imagery.
+4. Switch to Satellite View and tap the exact same physical point.
+5. Repeat for four landmarks. Spread points around the plant footprint, roughly near its corners. Do not use four nearby or collinear points.
+6. Select an engineering zone and tap **Transfer selected zone**.
+7. Inspect the transferred outline at close zoom. If offset, repeat with more accurately identified landmarks.
 
-## Deployment
-Replace `index.html` and `F_D1.jpg` in the GitHub Pages repository with the files in this ZIP. Keep both files in the same directory. Commit and push the changes.
+## Important
+- Engineering and satellite points must be paired in the same order and represent exactly the same physical locations.
+- Independently drawn satellite zones are not moved by registration. Use **Transfer selected zone** to create/update satellite geometry from the engineering zone.
+- A blue/green/red linked label alone indicates shared data identity, not geographic alignment.
+- This app stores data in browser LocalStorage and does not synchronize across devices.
+- Validate all geometry against known site features before operational or safety-critical use.
 
-## Browser data
-The update preserves existing LocalStorage keys. It adds `plant_satellite_viewport_v1` to remember the satellite map center and zoom. Do not clear site data if you need to retain your saved zones and personnel records.
+## Deploy
+Replace `index.html` and `F_D1.jpg` in the GitHub Pages repository. Keep them in the same folder. Preserve browser site data to retain existing zones and personnel.
