@@ -219,17 +219,25 @@
         .leaflet-draw-toolbar a, .leaflet-control-zoom a { width:38px !important; height:38px !important; line-height:38px !important; }
         .leaflet-control-container { z-index:900; }
         @media (max-width:640px) {
-            .floating-btn-group { top:6px; left:7px; right:7px; max-width:calc(100% - 14px); gap:6px; }
-            .ui-btn { min-height:40px; padding:8px 11px !important; font-size:12px !important; }
-            .leaflet-top.leaflet-left { top:57px !important; left:7px !important; }
-            .leaflet-top.leaflet-right { top:57px !important; right:7px !important; }
-            .satellite-panel { top:108px !important; right:8px !important; width:calc(100vw - 16px) !important; max-height:55vh !important; }
-            .transfer-panel { top:108px !important; right:8px !important; left:8px !important; width:auto !important; max-height:58vh !important; }
+            .floating-btn-group {
+                top:5px; left:7px; right:7px; max-width:calc(100% - 14px);
+                display:grid; grid-template-columns:minmax(0,.78fr) minmax(0,1.42fr) minmax(0,1.18fr);
+                grid-auto-rows:minmax(38px,auto); gap:5px; padding:0; overflow:visible;
+            }
+            .ui-btn { width:100%; min-width:0; min-height:38px; padding:6px 5px !important; font-size:11px !important; line-height:1.15; justify-content:center; text-align:center; white-space:normal; overflow-wrap:anywhere; }
+            .ui-btn svg { flex:0 0 auto; }
+            .leaflet-top.leaflet-left { top:96px !important; left:7px !important; }
+            .leaflet-top.leaflet-right { top:96px !important; right:7px !important; }
+            .satellite-panel { top:105px !important; right:8px !important; width:calc(100vw - 16px) !important; max-height:55vh !important; }
+            .transfer-panel { top:105px !important; right:8px !important; left:8px !important; width:auto !important; max-height:58vh !important; }
             .connection-panel { left:8px !important; right:8px !important; bottom:max(8px,env(safe-area-inset-bottom)) !important; width:auto !important; }
             .manpower-badge { max-width:124px !important; padding:5px 7px !important; }
             .badge-zone { max-width:75px !important; font-size:10px !important; }
             .badge-count { font-size:9px !important; }
             .led { width:8px !important; height:8px !important; }
+        }
+        @media (min-width:641px) {
+            .floating-btn-group { flex-wrap:wrap; max-width:calc(100% - 30px); }
         }
         @media (prefers-reduced-motion: reduce) {
             .led-running, .led-maintenance, .flowing-line, .pulsing-zone { animation:none !important; }
@@ -383,15 +391,59 @@
         let zoneAlignment = { active:false, phase:'source', pairs:[] };
         let zoneAlignmentTransform = JSON.parse(localStorage.getItem('plant_zone_alignment_v1') || 'null');
         let satellitePanelDismissed = false;
+        let plantLocationPicking = false;
 
         function toggleSidebar() {
             document.body.classList.toggle('sidebar-closed');
             setTimeout(() => { map.invalidateSize(); if (satelliteMap) satelliteMap.invalidateSize(); }, 300);
         }
 
+        function isValidPlantSite(site) {
+            return !!site && Number.isFinite(Number(site.lat)) && Number.isFinite(Number(site.lng)) &&
+                Number(site.lat) >= -90 && Number(site.lat) <= 90 && Number(site.lng) >= -180 && Number(site.lng) <= 180;
+        }
+        function readSavedSatelliteViewport() {
+            try {
+                const v = JSON.parse(localStorage.getItem('plant_satellite_viewport_v1') || 'null');
+                if (!v || !Array.isArray(v.center) || v.center.length !== 2 || !Number.isFinite(v.zoom)) return null;
+                const lat=Number(v.center[0]), lng=Number(v.center[1]);
+                if (lat < -90 || lat > 90 || lng < -180 || lng > 180 || v.zoom < 1 || v.zoom > 19) return null;
+                return { center:[lat,lng], zoom:Math.max(2,Math.min(19,v.zoom)) };
+            } catch (_) { return null; }
+        }
+        function saveSatelliteViewport() {
+            if (!satelliteMap || !satelliteMap.getCenter()) return;
+            const c=satelliteMap.getCenter();
+            localStorage.setItem('plant_satellite_viewport_v1', JSON.stringify({center:[c.lat,c.lng],zoom:satelliteMap.getZoom()}));
+        }
+        function getSatelliteZonesBounds() {
+            if (!satelliteZones || !satelliteZones.length) return null;
+            const points=[];
+            satelliteZones.forEach(z=>{
+                if (z.type === 'marker' && z.latlng && Number.isFinite(Number(z.latlng.lat)) && Number.isFinite(Number(z.latlng.lng))) points.push([Number(z.latlng.lat),Number(z.latlng.lng)]);
+                else if (z.latlngs) {
+                    const flatten=a=>Array.isArray(a) ? a.forEach(flatten) : (a && Number.isFinite(Number(a.lat)) && Number.isFinite(Number(a.lng)) ? points.push([Number(a.lat),Number(a.lng)]) : null);
+                    flatten(z.latlngs);
+                }
+            });
+            return points.length ? L.latLngBounds(points) : null;
+        }
+
         function initializeSatelliteMap() {
             if (satelliteMap) return;
             satelliteMap = L.map('satellite-map', { zoomControl: true, preferCanvas: true }).setView([20.5937, 78.9629], 5);
+            // Restore the last useful map viewport. If none exists, center on the saved plant
+            // reference; otherwise fit the saved satellite zones instead of leaving the user
+            // at the India-wide default view.
+            const savedViewport = readSavedSatelliteViewport();
+            if (savedViewport) {
+                satelliteMap.setView(savedViewport.center, savedViewport.zoom, { animate:false });
+            } else if (isValidPlantSite(plantSite)) {
+                satelliteMap.setView([plantSite.lat, plantSite.lng], 17, { animate:false });
+            } else if (satelliteZones.length) {
+                const zoneBounds = getSatelliteZonesBounds();
+                if (zoneBounds && zoneBounds.isValid()) satelliteMap.fitBounds(zoneBounds, { padding:[36,36], maxZoom:17, animate:false });
+            }
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxZoom: 19,
                 attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
@@ -402,7 +454,12 @@
             satelliteMap.on('click', function (event) {
                 if (zoneAlignment.active && currentMapView === 'satellite') { captureSatelliteAlignmentPoint(event.latlng); return; }
                 if (connectionDrawing && currentMapView === 'satellite') { addConnectionPoint(event.latlng); return; }
-                setPlantSite(event.latlng.lat, event.latlng.lng, true);
+                if (plantLocationPicking) {
+                    setPlantSite(event.latlng.lat, event.latlng.lng, true);
+                    plantLocationPicking = false;
+                    const pickBtn=document.getElementById('pickPlantLocationBtn');
+                    if(pickBtn) pickBtn.textContent='Pick on map';
+                }
             });
             satelliteEditControl = new L.Control.Draw({ draw:false, edit:{ featureGroup:satelliteConnectionLayer, remove:false } });
             satelliteMap.addControl(satelliteEditControl);
@@ -412,7 +469,10 @@
                 edit:{ featureGroup:satelliteDrawnItems, remove:true }
             });
             satelliteMap.addControl(satelliteDrawControl);
-            satelliteMap.on('zoomend moveend', function(){ layoutSatelliteBadges(); updateSatelliteBadgeScale(); });
+            satelliteMap.on('zoomend moveend', function(){
+                layoutSatelliteBadges(); updateSatelliteBadgeScale();
+                saveSatelliteViewport();
+            });
             satelliteMap.on(L.Draw.Event.CREATED, onSatelliteZoneCreated);
             satelliteMap.on(L.Draw.Event.EDITED, onSatelliteZonesEdited);
             satelliteMap.on(L.Draw.Event.DELETED, onSatelliteZonesDeleted);
@@ -425,6 +485,7 @@
                 document.getElementById('plantLongitude').value = plantSite.lng;
                 placePlantMarker(plantSite.lat, plantSite.lng);
                 document.getElementById('plantLocationStatus').textContent = 'Saved plant location: ' + plantSite.lat.toFixed(6) + ', ' + plantSite.lng.toFixed(6);
+                if (!savedViewport) satelliteMap.setView([plantSite.lat, plantSite.lng], 17, { animate:false });
             }
         }
 
@@ -452,8 +513,14 @@
 
         function recenterCurrentMap() {
             if (currentMapView === 'engineering') map.fitBounds(bounds);
-            else if (plantSite && satelliteMap) satelliteMap.setView([plantSite.lat, plantSite.lng], 17);
-            else if (satelliteMap) satelliteMap.setView([20.5937, 78.9629], 5);
+            else if (satelliteMap) {
+                if (isValidPlantSite(plantSite)) satelliteMap.setView([plantSite.lat, plantSite.lng], 17);
+                else {
+                    const b=getSatelliteZonesBounds();
+                    if (b && b.isValid()) satelliteMap.fitBounds(b,{padding:[36,36],maxZoom:17});
+                    else satelliteMap.setView([20.5937,78.9629],5);
+                }
+            }
         }
 
         function placePlantMarker(lat, lng) {
@@ -488,6 +555,12 @@
             closeSatellitePanel();
         }
 
+        function startPlantLocationPick() {
+            plantLocationPicking=true;
+            document.getElementById('plantLocationStatus').textContent='Tap the exact plant reference point on the map.';
+            document.getElementById('pickPlantLocationBtn').textContent='Tap map to place…';
+            document.getElementById('satellitePanel').classList.remove('visible');
+        }
         function closeSatellitePanel() {
             satellitePanelDismissed = true;
             document.getElementById('satellitePanel').classList.remove('visible');
@@ -909,19 +982,23 @@
         }
         function layoutSatelliteBadges() {
             if (!satelliteMap) return;
-            const occupied=[];
-            const candidates=[[0,-62],[0,62],[158,0],[-158,0],[158,-65],[-158,-65],[158,65],[-158,65],[0,-125],[0,125]];
+            const size=satelliteMap.getSize(), occupied=[];
+            const candidates=[[0,-62],[0,62],[150,0],[-150,0],[150,-62],[-150,-62],[150,62],[-150,62],[0,-120],[0,120],[90,-100],[-90,-100],[90,100],[-90,100]];
             Object.values(satelliteZoneBadgeMarkers).forEach(marker=>{
+                if (!marker._badgeAnchor) return;
                 const base=satelliteMap.latLngToLayerPoint(marker._badgeAnchor);
-                let chosen=[0,0], rect=null;
-                for (const offset of candidates) {
+                let chosen=null, chosenRect=null, bestScore=-Infinity;
+                candidates.forEach((offset,index)=>{
                     const cx=base.x+offset[0], cy=base.y+offset[1];
-                    const r={l:cx-76,r:cx+76,t:cy-34,b:cy+34};
+                    const r={l:cx-72,r:cx+72,t:cy-34,b:cy+34};
                     const collision=occupied.some(o=>!(r.r<o.l || r.l>o.r || r.b<o.t || r.t>o.b));
-                    if (!collision) { chosen=offset; rect=r; break; }
-                }
-                if (!rect) { chosen=candidates[occupied.length % candidates.length]; const cx=base.x+chosen[0],cy=base.y+chosen[1]; rect={l:cx-76,r:cx+76,t:cy-34,b:cy+34}; }
-                occupied.push(rect);
+                    const margin=8;
+                    const inside=r.l>=margin && r.r<=size.x-margin && r.t>=margin && r.b<=size.y-margin;
+                    // Prefer positions that are both visible and non-overlapping.
+                    const score=(inside?1000:0)+(collision?-1000:0)-index;
+                    if(score>bestScore){bestScore=score;chosen=offset;chosenRect=r;}
+                });
+                if(chosenRect) occupied.push(chosenRect);
                 marker.setLatLng(satelliteMap.layerPointToLatLng(L.point(base.x+chosen[0],base.y+chosen[1])));
             });
         }
