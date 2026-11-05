@@ -7,24 +7,24 @@
 :root{color-scheme:dark;--bg:#0c1714;--panel:#14251f;--line:#2b4038;--text:#eef5f1;--muted:#a7b8b0}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
 header{min-height:68px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);background:#10201c}
-.brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:.12em}.brand img{width:36px;height:36px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.24em}
+.brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:.12em}.brand img,.brand-mark{width:36px;height:36px;flex:0 0 36px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.24em}
 a,button{border:1px solid #385349;background:#1a3028;color:var(--text);border-radius:10px;padding:9px 13px;font:600 13px inherit;text-decoration:none;cursor:pointer}
 main{padding:16px;max-width:1600px;margin:auto}.head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:12px}.head h1{margin:0;font-size:clamp(20px,3vw,28px)}.head p,.muted{margin:4px 0 0;color:var(--muted);font-size:13px}
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:12px}.viewer{height:calc(100dvh - 150px);min-height:440px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:radial-gradient(ellipse at center,#34463d,#111d18)}
 model-viewer{width:100%;height:100%;background:transparent;--poster-color:transparent}
 .side{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;align-self:start}.side h2{font-size:17px;margin:0 0 8px}.tag{display:inline-block;padding:4px 8px;border-radius:20px;background:#24483b;color:#a9e3c9;font-size:11px;font-weight:700}
-.note{font-size:12px;color:var(--muted);line-height:1.55}.controls{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.hotspot{background:#1d7057;color:white;border:1px solid white;border-radius:18px;padding:6px 9px;font-size:11px}.note{font-size:12px;color:var(--muted);line-height:1.55}.controls{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
 @media(max-width:800px){header{padding:10px 12px}.brand{font-size:12px}main{padding:10px}.layout{grid-template-columns:1fr}.viewer{height:62dvh;min-height:370px}.head{display:block}.head nav{margin-top:10px}}
 </style>
 <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
 </head>
 <body>
-<header><div class="brand"><img src="assets/plant-mark.svg" alt=""><span>PLANT<small>TRACKER · 3D ILLUSTRATIVE VIEW</small></span></div><nav><a href="index.html">Back to plant</a> <a href="satellite-view.html">Satellite map</a></nav></header>
+<header><div class="brand"><svg class="brand-mark" viewBox="0 0 64 64" role="img" aria-label="Plant Tracker logo"><rect width="64" height="64" rx="15" fill="#1c3f32"/><path d="M14 43 27 15h10l13 28h-9l-3-7H26l-3 7zm15-14h6l-3-8z" fill="#8dd4aa"/><path d="M20 49h24" stroke="#dcefe3" stroke-width="3" stroke-linecap="round"/></svg><span>PLANT<small>TRACKER · 3D ILLUSTRATIVE VIEW</small></span></div><nav><a href="index.html">Back to plant</a> <a href="satellite-view.html">Satellite map</a></nav></header>
 <main>
 <div class="head"><div><h1>3D plant overview</h1><p>One complete pre-arranged industrial processing and haulage site model.</p></div></div>
 <div class="layout">
 <section class="viewer">
-<model-viewer id="siteModel" src="https://cdn.3dassets.dev/assets/13465/v1/model.glb" alt="Illustrative ore processing and haulage plant 3D model" camera-controls touch-action="pan-y" auto-rotate shadow-intensity="1" exposure="1" environment-image="neutral" interaction-prompt="auto" loading="eager" reveal="auto">
+<model-viewer id="siteModel" src="https://cdn.3dassets.dev/assets/13465/v1/model.glb" alt="Illustrative ore processing and haulage plant 3D model" camera-controls touch-action="pan-y" auto-rotate shadow-intensity="1" exposure="1" environment-image="neutral" interaction-prompt="auto" loading="eager" reveal="auto">\n<button slot="hotspot-site-1" class="hotspot" data-position="0m 2m 0m" data-normal="0m 1m 0m" style="display:none">Site marker</button>
 <div slot="progress-bar" style="position:absolute;bottom:0;left:0;height:4px;background:#35c58b;width:var(--progress-bar-width)"></div>
 <div slot="error" style="padding:24px;color:white">The 3D model could not load. Check your internet connection or the model hosting service.</div>
 </model-viewer>
@@ -33,7 +33,7 @@ model-viewer{width:100%;height:100%;background:transparent;--poster-color:transp
 <span class="tag">OPEN-SOURCE · CC0 1.0</span>
 <h2 style="margin-top:12px">Ore Processing and Haulage Plant</h2>
 <p class="muted">Complete starter scene · 56 model components</p>
-<div class="controls"><button id="reset">Reset view</button><button id="spin">Pause rotation</button><button id="fullscreen">Full screen</button></div>
+<div class="controls"><button id="fullscreen">⛶ Full screen</button><button id="addPin">Add site marker</button><button id="clearPins">Clear markers</button><button id="reset">Reset view</button><button id="spin">Pause rotation</button><button id="fullscreen">Full screen</button></div>
 <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
 <p class="note"><b>Included in the scene</b><br>Truck dump pocket, crushing, conveyors, milling and separation, storage, stockpile, rail loadout and site services.</p>
 <p class="note"><b>Controls</b><br>Drag to orbit · scroll or pinch to zoom · two-finger drag to pan. Use the controls above to reset or enter full screen.</p>
@@ -44,6 +44,14 @@ model-viewer{width:100%;height:100%;background:transparent;--poster-color:transp
 </main>
 <script>
 const mv=document.getElementById('siteModel');
+
+const pinsKey='plant_tracker_3d_markers_v1';
+let pins=[];try{pins=JSON.parse(localStorage.getItem(pinsKey)||'[]')}catch(e){}
+function renderPins(){document.querySelectorAll('.dynamic-hotspot').forEach(n=>n.remove());pins.forEach((p,i)=>{const b=document.createElement('button');b.className='hotspot dynamic-hotspot';b.slot='hotspot-pin-'+i;b.dataset.position=p.position;b.dataset.normal='0m 1m 0m';b.textContent=p.name;mv.appendChild(b);});}
+document.getElementById('addPin').onclick=()=>{const name=prompt('Marker name','Plant area');if(!name)return;const position=prompt('3D position (x y z, in metres)','0m 2m 0m');if(!position)return;pins.push({name,position});localStorage.setItem(pinsKey,JSON.stringify(pins));renderPins();};
+document.getElementById('clearPins').onclick=()=>{if(confirm('Clear all illustrative 3D markers?')){pins=[];localStorage.setItem(pinsKey,'[]');renderPins();}};
+document.getElementById('fullscreen').onclick=async()=>{const el=document.querySelector('.viewer');try{if(!document.fullscreenElement)await el.requestFullscreen();else await document.exitFullscreen();}catch(e){}};
+renderPins();
 document.getElementById('reset').onclick=()=>{mv.cameraOrbit='auto auto auto';mv.cameraTarget='auto auto auto';mv.fieldOfView='auto';};
 document.getElementById('spin').onclick=e=>{mv.autoRotate=!mv.autoRotate;e.currentTarget.textContent=mv.autoRotate?'Pause rotation':'Start rotation';};
 document.getElementById('fullscreen').onclick=()=>{const el=document.querySelector('.viewer');if(el.requestFullscreen)el.requestFullscreen();};

@@ -9,7 +9,7 @@
 :root{color-scheme:dark;--bg:#0c1714;--panel:#14251f;--line:#2b4038;--text:#eef5f1;--muted:#a7b8b0;--green:#1d7057}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
 header{height:auto;min-height:68px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);background:#10201c;position:sticky;top:0;z-index:5}
-.brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:.12em}.brand img{width:36px;height:36px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:.12em}.brand img,.brand-mark{width:36px;height:36px;flex:0 0 36px}
 .brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.24em}
 .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 button,a{border:1px solid #385349;background:#1a3028;color:var(--text);border-radius:10px;padding:9px 13px;font:600 13px inherit;text-decoration:none;cursor:pointer}
@@ -24,15 +24,15 @@ button:hover,a:hover{background:#25483b}main{padding:18px;max-width:1500px;margi
 </head>
 <body>
 <header>
-  <div class="brand"><img src="assets/plant-mark.svg" alt=""><span>PLANT<small>TRACKER · ENGINEERING</small></span></div>
+  <div class="brand"><svg class="brand-mark" viewBox="0 0 64 64" role="img" aria-label="Plant Tracker logo"><rect width="64" height="64" rx="15" fill="#1c3f32"/><path d="M14 43 27 15h10l13 28h-9l-3-7H26l-3 7zm15-14h6l-3-8z" fill="#8dd4aa"/><path d="M20 49h24" stroke="#dcefe3" stroke-width="3" stroke-linecap="round"/></svg><span>PLANT<small>TRACKER · ENGINEERING</small></span></div>
   <nav class="actions" aria-label="Drawing controls">
-    <button id="fit">Fit</button><button id="minus" aria-label="Zoom out">−</button><button id="plus" aria-label="Zoom in">＋</button><button id="rotate">Rotate 90°</button><a href="index.html">Back to plant</a>
+    <button id="fullscreen">⛶ Full screen</button><button id="toolSelect">Select</button><button id="toolRect">Rectangle</button><button id="toolPoly">Polygon</button><button id="toolPin">Pin</button><button id="fit">Fit</button><button id="minus" aria-label="Zoom out">−</button><button id="plus" aria-label="Zoom in">＋</button><button id="rotate">Rotate 90°</button><a href="index.html">Back to plant</a>
   </nav>
 </header>
 <main>
   <div class="heading"><div><h1>Engineering drawing</h1><p>F_D1.jpg · Pan by dragging, zoom with controls or pinch on touchscreens.</p></div></div>
   <section class="viewer" id="viewer" aria-label="Zoomable engineering drawing">
-    <div class="stage" id="stage"><img id="drawing" src="F_D1.jpg" alt="Original plant engineering process flow drawing"></div>
+    <div class="stage" id="stage"><img id="drawing" src="F_D1.jpg" alt="Original plant engineering process flow drawing"><svg id="drawingOverlay" viewBox="0 0 1000 1000" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none"></svg></div>
     <div class="hint">Drag to pan · Pinch or use ＋ / − to zoom</div>
   </section>
 </main>
@@ -51,6 +51,23 @@ button:hover,a:hover{background:#25483b}main{padding:18px;max-width:1500px;margi
  viewer.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&drag){x=drag.ox+(e.clientX-drag.x);y=drag.oy+(e.clientY-drag.y);render()}else if(pointers.size===2&&pinchStart){const a=[...pointers.values()];const d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);scale=Math.max(.12,Math.min(8,pinchStart.scale*d/pinchStart.dist));render()}});
  function end(e){pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;if(!pointers.size){drag=null;viewer.classList.remove('dragging')}else if(pointers.size===1){const p=[...pointers.values()][0];drag={x:p.x,y:p.y,ox:x,oy:y}}}
  viewer.addEventListener('pointerup',end);viewer.addEventListener('pointercancel',end);
+
+ const overlay=document.getElementById('drawingOverlay'),KEY='plant_tracker_engineering_annotations_v1';
+ let mode='select',drawing=false,points=[],annotations=[];
+ try{annotations=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){annotations=[]}
+ function redraw(){overlay.innerHTML='';annotations.forEach((a,i)=>{let el;if(a.type==='rect'){el=document.createElementNS('http://www.w3.org/2000/svg','rect');el.setAttribute('x',a.x);el.setAttribute('y',a.y);el.setAttribute('width',a.w);el.setAttribute('height',a.h);el.setAttribute('fill','#35a7ff22');el.setAttribute('stroke','#168cff');el.setAttribute('stroke-width','4')}else if(a.type==='pin'){el=document.createElementNS('http://www.w3.org/2000/svg','circle');el.setAttribute('cx',a.x);el.setAttribute('cy',a.y);el.setAttribute('r','10');el.setAttribute('fill','#e3a63f');el.setAttribute('stroke','#fff');el.setAttribute('stroke-width','3')}else{el=document.createElementNS('http://www.w3.org/2000/svg','polygon');el.setAttribute('points',a.points.map(p=>p.join(',')).join(' '));el.setAttribute('fill','#35a7ff22');el.setAttribute('stroke','#168cff');el.setAttribute('stroke-width','4')}el.style.pointerEvents='auto';el.style.cursor='pointer';el.addEventListener('click',e=>{if(mode==='select'){e.stopPropagation();const name=prompt('Feature name',a.name||'Drawing feature');if(name!==null){a.name=name;saveAnnotations();}}});overlay.appendChild(el);});}
+ function saveAnnotations(){localStorage.setItem(KEY,JSON.stringify(annotations));redraw()}
+ function svgPoint(e){const r=overlay.getBoundingClientRect();return [(e.clientX-r.left)/r.width*1000,(e.clientY-r.top)/r.height*1000]}
+ overlay.style.pointerEvents='auto';
+ overlay.addEventListener('pointerdown',e=>{if(mode==='select')return;e.preventDefault();const p=svgPoint(e);if(mode==='rect'||mode==='pin'){drawing={start:p};}else{points.push(p);if(points.length>=3&&e.detail>=2){const name=prompt('Name this drawing zone','New zone');if(name!==null)annotations.push({type:'poly',points:points,name});points=[];saveAnnotations();}}});
+ overlay.addEventListener('pointerup',e=>{if(!drawing)return;const p=svgPoint(e),a=drawing.start; if(mode==='rect'){const name=prompt('Name this drawing area','New area');if(name!==null)annotations.push({type:'rect',x:Math.min(a[0],p[0]),y:Math.min(a[1],p[1]),w:Math.abs(p[0]-a[0]),h:Math.abs(p[1]-a[1]),name});}else if(mode==='pin'){const name=prompt('Name this drawing marker','Equipment marker');if(name!==null)annotations.push({type:'pin',x:a[0],y:a[1],name});}drawing=false;saveAnnotations();});
+ document.getElementById('toolSelect').onclick=()=>mode='select';
+ document.getElementById('toolRect').onclick=()=>{mode='rect';points=[]};
+ document.getElementById('toolPoly').onclick=()=>{mode='poly';points=[];alert('Tap at least three polygon corners, then double-tap the last corner to finish.')};
+ document.getElementById('toolPin').onclick=()=>mode='pin';
+ document.getElementById('fullscreen').onclick=async()=>{try{if(!document.fullscreenElement)await viewer.requestFullscreen();else await document.exitFullscreen();}catch(e){}};
+ redraw();
+
  window.addEventListener('resize',()=>{if(scale<=1.01)fit()});
 })();
 </script>

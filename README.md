@@ -63,3 +63,11 @@ The later integration should replace sample arrays and demo event handlers with 
 - Publisher states the model pack is CC0 1.0 Universal. The scene includes crushing, conveyors, milling/separation, storage and rail loadout.
 - The GLB is streamed, not bundled in this ZIP. Internet access and CDN availability are required. See `assets/3d/README.md` for how to self-host it later.
 - This is an illustrative generic site, not a surveyed reconstruction of the Angul plant.
+
+
+## Integrated map / drawing / 3D controls update
+- Satellite map: full-screen control; Leaflet Draw toolbar is visible on entry; polygon, rectangle, line and marker tools are available. The map editor persists drawn GeoJSON in browser LocalStorage and supports export/import.
+- Engineering drawing: full-screen control plus Select, Rectangle, Polygon and Pin annotation tools. These drawing annotations are stored locally in the browser under `plant_tracker_engineering_annotations_v1`.
+- 3D site viewer: full-screen control, orbit/zoom/pan, and user-added illustrative hotspot labels saved locally under `plant_tracker_3d_markers_v1`.
+- Logo is now inline SVG on the standalone viewer pages to avoid broken relative image paths.
+- Important: satellite polygons, engineering-image annotations and 3D hotspots are separate coordinate systems. This frontend update makes drawing/annotation available in each view, but does not yet automatically register one geometry across all three coordinate systems. That requires explicit calibration between the engineering drawing, geographic coordinates and 3D model coordinates. LocalStorage is per browser/device; no Supabase sync or multi-user editing is implemented.
