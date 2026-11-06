@@ -159,6 +159,7 @@ $("#newMessage").addEventListener("click",()=>{});$("#mobileMenu").addEventListe
  $("#orgSearch").addEventListener("input",render);
  acting.addEventListener("change",()=>showToast(`Prototype authority view: ${acting.value}. This selector is for testing only.`));
  window.PlantTrackerOrg={getPositions:()=>structuredClone(positions),getAudit:()=>structuredClone(audit),refresh:render,zoneOptions:linkOptions};
- window.addEventListener("storage",e=>{if(e.key===MAP_KEY||e.key===DRAW_KEY)render();});
+ window.addEventListener("storage",e=>{if(e.key===MAP_KEY||e.key===DRAW_KEY||e.key===KEY||e.key===AUDIT)render();});
+ window.addEventListener("planttracker:remotechange",()=>{try{positions=JSON.parse(localStorage.getItem(KEY))||positions;audit=JSON.parse(localStorage.getItem(AUDIT))||audit;render();}catch(e){console.error("Could not refresh remote workforce data",e);}});
  render();
 })();

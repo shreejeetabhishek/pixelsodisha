@@ -36,6 +36,9 @@ button:hover,a:hover{background:#25483b}main{padding:18px;max-width:1500px;margi
     <div class="hint">Drag to pan · Pinch or use ＋ / − to zoom</div>
   </section>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="sync.js"></script>\n<script src="github-config.js"></script>\n<script src="github-sync.js"></script>
 <script>
 (()=>{
  const viewer=document.getElementById('viewer'),stage=document.getElementById('stage'),img=document.getElementById('drawing');
@@ -141,11 +144,25 @@ button:hover,a:hover{background:#25483b}main{padding:18px;max-width:1500px;margi
  document.getElementById('finishPoly').onclick=()=>{if(points.length<3){alert('Add at least three polygon corners first.');return;}addShape({type:'poly',points:clone(points)});points=[];redraw();};
  document.getElementById('toolPin').onclick=()=>{points=[];setMode('pin');};
  document.getElementById('renameShape').onclick=()=>{const a=annotations.find(x=>x.id===selectedId);if(!a){alert('Select a drawing feature first.');return;}const n=prompt('Rename feature',a.name||'');if(n!==null){snapshot();a.name=n;saveAnnotations();}};
- document.getElementById('deleteShape').onclick=()=>{if(!selectedId){alert('Select a drawing feature first.');return;}const a=annotations.find(x=>x.id===selectedId);if(!a)return;if(confirm('Delete '+(a.name||'this feature')+'?')){snapshot();annotations=annotations.filter(x=>x.id!==selectedId);selectedId=null;saveAnnotations();}};
+ document.getElementById('deleteShape').onclick=()=>{
+  if(!selectedId){alert('Select a drawing feature first.');return;}
+  const a=annotations.find(x=>x.id===selectedId);if(!a)return;
+  const links=JSON.parse(localStorage.getItem('plant_tracker_zone_links_v1')||'[]').filter(x=>x.drawingId===a.id);
+  const msg=links.length?'Delete this drawing annotation AND its linked satellite zone? Workforce assignments will be unlinked.':'Delete '+(a.name||'this feature')+'?';
+  if(!confirm(msg))return;
+  snapshot();annotations=annotations.filter(x=>x.id!==selectedId);selectedId=null;saveAnnotations();
+  if(links.length){
+   const zoneIds=new Set(links.map(x=>x.zoneId));
+   try{const geo=JSON.parse(localStorage.getItem('plant_tracker_map_features_v1')||'{"type":"FeatureCollection","features":[]}');geo.features=(geo.features||[]).filter(f=>!zoneIds.has((f.properties||{}).zoneId));localStorage.setItem('plant_tracker_map_features_v1',JSON.stringify(geo));}catch(err){console.error('Could not update linked satellite zone',err);}
+   const positions=JSON.parse(localStorage.getItem('plant_tracker_org_hierarchy_v1')||'[]').map(p=>links.some(x=>x.zoneId===p.zoneId&&x.drawingId===p.drawingId)?{...p,zoneId:'',drawingId:''}:p);
+   localStorage.setItem('plant_tracker_org_hierarchy_v1',JSON.stringify(positions));
+   window.dispatchEvent(new CustomEvent('planttracker:remotechange',{detail:{type:'linked-zone-delete'}}));
+  }
+ };
  document.getElementById('undoShape').onclick=()=>{if(!undoStack.length)return;annotations=undoStack.pop();selectedId=null;saveAnnotations();};
  document.getElementById('fullscreen').onclick=async()=>{try{if(!document.fullscreenElement)await viewer.requestFullscreen();else await document.exitFullscreen();}catch(e){}};
 
- setMode('select');redraw();window.addEventListener('storage',ev=>{if(ev.key==='plant_tracker_org_hierarchy_v1'||ev.key===KEY)redraw();});window.addEventListener('planttracker:datachange',()=>redraw());
+ setMode('select');redraw();window.addEventListener('storage',ev=>{if(ev.key==='plant_tracker_org_hierarchy_v1'||ev.key===KEY)redraw();});window.addEventListener('planttracker:datachange',()=>redraw());window.addEventListener('planttracker:remotechange',()=>redraw());
 
  window.addEventListener('resize',()=>{if(scale<=1.01)fit()});
 })();

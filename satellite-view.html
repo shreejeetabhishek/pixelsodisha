@@ -63,6 +63,9 @@ button:hover,a:hover{background:#25483b}main{padding:16px;max-width:1600px;margi
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="sync.js"></script>\n<script src="github-config.js"></script>\n<script src="github-sync.js"></script>
 <script>
 (()=>{
  "use strict";
@@ -72,11 +75,11 @@ button:hover,a:hover{background:#25483b}main{padding:16px;max-width:1600px;margi
  const streets=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'});
  imagery.addTo(map); map.on('moveend zoomend',()=>renderZoneCards());
  const drawn=new L.FeatureGroup().addTo(map); const zoneCards=L.layerGroup().addTo(map); let selectedZoneId=null;
- let drawControl=null,editing=false,dirty=false;
+ let drawControl=null,editing=false,dirty=false,autoSaveTimer=null;
  const status=document.getElementById('saveStatus'),panel=document.getElementById('editPanel');
  const markerIcon=L.divIcon({className:'',html:'<div class="yard-pin"></div>',iconSize:[20,20],iconAnchor:[10,10]});
  L.marker(yard,{icon:markerIcon}).addTo(map).bindPopup('<b>Yard 1 reference</b>20.8954690, 84.9788749');
- function setDirty(){dirty=true;status.textContent='Unsaved map changes';}
+ function setDirty(){dirty=true;status.textContent='Saving map changes…';clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(save,650);}
  function featureName(layer){return layer.feature?.properties?.name||'Unnamed feature';}
  function featureType(layer){return layer.feature?.properties?.kind||'Zone';}
  function attachFeature(layer,props){
@@ -149,7 +152,21 @@ button:hover,a:hover{background:#25483b}main{padding:16px;max-width:1600px;margi
    attachFeature(layer,{name:name.trim()||kind,kind,color});drawn.addLayer(layer);setDirty();renderList();
  });
  map.on(L.Draw.Event.EDITED,()=>{setDirty();renderList();});
- map.on(L.Draw.Event.DELETED,()=>{setDirty();renderList();});
+ map.on(L.Draw.Event.DELETED,e=>{
+   const removed=[];e.layers.eachLayer(l=>{const zid=l.feature?.properties?.zoneId;if(zid)removed.push(zid);});
+   if(removed.length){
+    const links=JSON.parse(localStorage.getItem('plant_tracker_zone_links_v1')||'[]').filter(x=>removed.includes(x.zoneId));
+    if(links.length&&confirm('This zone is linked to engineering drawing annotations. Also delete the linked drawing annotations and unlink workforce positions?')){
+     const ids=new Set(links.map(x=>x.drawingId));
+     const annotations=JSON.parse(localStorage.getItem('plant_tracker_engineering_annotations_v1')||'[]').filter(a=>!ids.has(a.id));
+     const positions=JSON.parse(localStorage.getItem('plant_tracker_org_hierarchy_v1')||'[]').map(p=>removed.includes(p.zoneId)?{...p,zoneId:'',drawingId:''}:p);
+     localStorage.setItem('plant_tracker_engineering_annotations_v1',JSON.stringify(annotations));
+     localStorage.setItem('plant_tracker_org_hierarchy_v1',JSON.stringify(positions));
+     localStorage.setItem('plant_tracker_zone_links_v1',JSON.stringify([]));
+    }
+   }
+   setDirty();renderList();
+  });
  document.getElementById('saveMap').onclick=save;
  document.getElementById('exportMap').onclick=()=>{
    const blob=new Blob([JSON.stringify(drawn.toGeoJSON(),null,2)],{type:'application/geo+json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -168,6 +185,7 @@ button:hover,a:hover{background:#25483b}main{padding:16px;max-width:1600px;margi
  loadSaved();
  window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY){drawn.clearLayers();loadSaved();} });
  window.addEventListener('planttracker:datachange',()=>{drawn.eachLayer(l=>{const zid=l.feature?.properties?.zoneId;const linked=JSON.parse(localStorage.getItem('plant_tracker_org_hierarchy_v1')||'[]').filter(p=>p.zoneId===zid);l.feature.properties.assignedPositions=linked.map(p=>({positionId:p.id,role:p.role,employee:p.person||'Vacant',employeeId:p.employeeId||''}));attachFeature(l,l.feature.properties);});renderList();renderZoneCards();});
+ window.addEventListener('planttracker:remotechange',()=>{drawn.clearLayers();loadSaved();const positions=JSON.parse(localStorage.getItem('plant_tracker_org_hierarchy_v1')||'[]');drawn.eachLayer(l=>{const zid=l.feature?.properties?.zoneId;l.feature.properties.assignedPositions=positions.filter(p=>p.zoneId===zid).map(p=>({positionId:p.id,role:p.role,employee:p.person||'Vacant',employeeId:p.employeeId||''}));});renderZoneCards();});
  // Keep drawing controls visible as requested; geometry editing is always available in this prototype.
  editing=true;panel.hidden=false;document.getElementById('editMode').textContent='Hide edit panel';enableEditing();
  document.getElementById('editMode').onclick=()=>{panel.hidden=!panel.hidden;document.getElementById('editMode').textContent=panel.hidden?'Show edit panel':'Hide edit panel';if(!drawControl){enableEditing();}};
