@@ -13,8 +13,24 @@ header{min-height:68px;padding:12px 18px;display:flex;align-items:center;justify
 .brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:.12em}.brand img,.brand-mark{width:36px;height:36px;flex:0 0 36px}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.24em}
 .actions{display:flex;gap:8px;flex-wrap:wrap}button,a{border:1px solid #385349;background:#1a3028;color:var(--text);border-radius:10px;padding:9px 13px;font:600 13px inherit;text-decoration:none;cursor:pointer}
 button:hover,a:hover{background:#25483b}main{padding:16px;max-width:1600px;margin:auto}.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px}.top h1{margin:0;font-size:clamp(20px,3vw,28px)}.top p{margin:4px 0 0;color:var(--muted);font-size:13px}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px}.map-wrap{height:calc(100dvh - 205px);min-height:440px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#25342e;position:relative}#map{height:100%;width:100%;background:#26352e}.side{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;align-self:start}.side h2{margin:0 0 4px;font-size:17px}.muted{color:var(--muted);font-size:13px}.coord{padding:12px;background:#0e1c17;border:1px solid var(--line);border-radius:10px;margin:14px 0}.coord b{display:block;font-variant-numeric:tabular-nums;margin-top:3px}.tag{display:inline-block;border-radius:20px;padding:4px 8px;background:#24483b;color:#a9e3c9;font-size:11px;font-weight:700}.note{font-size:12px;color:var(--muted);line-height:1.5}.leaflet-container{font:inherit}.leaflet-control-attribution{font-size:10px!important}.yard-pin{width:20px;height:20px;background:#e3a63f;border:3px solid white;border-radius:50%;box-shadow:0 1px 8px #0009}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#14251f;color:#eef5f1}.leaflet-popup-content{margin:10px 13px}.leaflet-popup-content b{display:block;margin-bottom:3px}
-#mapWrap:fullscreen{width:100vw;height:100dvh;min-height:100dvh;border:0;border-radius:0}#mapWrap:fullscreen #map{height:100dvh}\n@media(max-width:800px){header{padding:10px 12px}.brand{font-size:12px}.actions{gap:5px}.actions button,.actions a{padding:8px 9px;font-size:12px}main{padding:10px}.layout{grid-template-columns:1fr}.map-wrap{height:62dvh;min-height:380px}.side{padding:13px}.top{display:block}.top .actions{margin-top:10px}}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;min-width:0}.map-wrap{height:calc(100dvh - 205px);min-height:440px;width:100%;min-width:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#25342e;position:relative}#map{height:100%;width:100%;background:#26352e}.side{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;align-self:start}.side h2{margin:0 0 4px;font-size:17px}.muted{color:var(--muted);font-size:13px}.coord{padding:12px;background:#0e1c17;border:1px solid var(--line);border-radius:10px;margin:14px 0}.coord b{display:block;font-variant-numeric:tabular-nums;margin-top:3px}.tag{display:inline-block;border-radius:20px;padding:4px 8px;background:#24483b;color:#a9e3c9;font-size:11px;font-weight:700}.note{font-size:12px;color:var(--muted);line-height:1.5}.leaflet-container{font:inherit}.leaflet-control-container{z-index:800}.leaflet-control-attribution{max-width:75%;white-space:normal!important;line-height:1.25!important}.leaflet-control-attribution{font-size:10px!important}.yard-pin{width:20px;height:20px;background:#e3a63f;border:3px solid white;border-radius:50%;box-shadow:0 1px 8px #0009}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#14251f;color:#eef5f1}.leaflet-popup-content{margin:10px 13px}.leaflet-popup-content b{display:block;margin-bottom:3px}
+#mapWrap:fullscreen{width:100vw;height:100dvh;min-height:100dvh;border:0;border-radius:0}#mapWrap:fullscreen #map{height:100dvh}
+@media(max-width:800px){header{padding:10px 12px;align-items:flex-start}.brand{font-size:12px}.actions{gap:5px}.actions button,.actions a{padding:8px 9px;font-size:12px}main{padding:10px}.layout{grid-template-columns:minmax(0,1fr);width:100%}.map-wrap{grid-column:1/-1;width:100%;height:68dvh;min-height:440px;max-height:760px}.side{grid-column:1/-1;width:100%;padding:13px}.top{display:block}.top .actions{display:flex;flex-wrap:wrap;justify-content:flex-start}.top .actions{margin-top:10px}}
+ 
+.zone-card-marker{background:transparent;border:0}
+.zone-card{width:158px;max-width:44vw;background:#111a27;border:1px solid #435367;border-radius:13px;padding:8px 10px;color:#f5f7fa;box-shadow:0 7px 22px #0008;font:600 12px/1.25 system-ui;cursor:pointer;position:relative}
+.zone-card:after{content:"";position:absolute;left:18px;bottom:-7px;width:12px;height:12px;background:#111a27;border-right:1px solid #435367;border-bottom:1px solid #435367;transform:rotate(45deg)}
+.zone-card-top{display:flex;align-items:center;gap:7px;min-width:0}
+.zone-card-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.02em}
+.zone-dot{width:11px;height:11px;flex:0 0 11px;border-radius:50%;background:#87939b;box-shadow:0 0 8px currentColor}
+.zone-dot.good{background:#13d957;color:#13d957}.zone-dot.warn{background:#e5a52e;color:#e5a52e}.zone-dot.bad{background:#f04444;color:#f04444}
+.zone-card-rule{height:1px;background:#334254;margin:7px 0}
+.zone-card-meta{color:#aab4c1;font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zone-card-link{color:#8dc9ed;font-size:11px;font-weight:600;margin-top:5px}
+.zone-card.selected{outline:2px solid #5ab3ee;transform:translateY(-2px)}
+.zone-details{min-width:220px;max-width:290px;color:#eaf1ee;font:13px/1.5 system-ui}
+.zone-details h3{margin:0 0 6px;font-size:15px}.zone-details .zrow{border-top:1px solid #34463f;padding:6px 0}.zone-details small{color:#a7b8b0}
+@media(max-width:800px){.zone-card{width:140px;padding:7px 8px;font-size:11px}.zone-card-meta{font-size:10px}}
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" crossorigin="anonymous">
 </head>
@@ -54,8 +70,8 @@ button:hover,a:hover{background:#25483b}main{padding:16px;max-width:1600px;margi
  const map=L.map('map',{zoomControl:true}).setView(yard,18);
  const imagery=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'});
  const streets=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'});
- imagery.addTo(map);
- const drawn=new L.FeatureGroup().addTo(map);
+ imagery.addTo(map); map.on('moveend zoomend',()=>renderZoneCards());
+ const drawn=new L.FeatureGroup().addTo(map); const zoneCards=L.layerGroup().addTo(map); let selectedZoneId=null;
  let drawControl=null,editing=false,dirty=false;
  const status=document.getElementById('saveStatus'),panel=document.getElementById('editPanel');
  const markerIcon=L.divIcon({className:'',html:'<div class="yard-pin"></div>',iconSize:[20,20],iconAnchor:[10,10]});
@@ -64,17 +80,51 @@ button:hover,a:hover{background:#25483b}main{padding:16px;max-width:1600px;margi
  function featureName(layer){return layer.feature?.properties?.name||'Unnamed feature';}
  function featureType(layer){return layer.feature?.properties?.kind||'Zone';}
  function attachFeature(layer,props){
+   if(!props.zoneId)props.zoneId=props.featureId||('ZONE-'+Math.random().toString(36).slice(2,9).toUpperCase());
    layer.feature=layer.feature||{type:'Feature',properties:{},geometry:null};
    layer.feature.properties={...(layer.feature.properties||{}),...props};
    if(layer.setStyle) layer.setStyle({color:props.color||'#35c58b',fillColor:props.color||'#35c58b',weight:3,fillOpacity:.18});
-   layer.bindPopup('<b>'+escapeHtml(featureName(layer))+'</b><br>'+escapeHtml(featureType(layer)));
+   const assigned=props.assignedPositions||[];
+   const assignmentHtml=assigned.length?'<hr>'+assigned.map(a=>'<div><b>'+escapeHtml(a.role)+'</b> · '+escapeHtml(a.employee)+'</div>').join(''):'<br><small>No position linked</small>';
+   layer.bindPopup('<b>'+escapeHtml(featureName(layer))+'</b><br>'+escapeHtml(featureType(layer))+assignmentHtml);
    layer.on('click',()=>{if(!editing){layer.openPopup();return;}const n=prompt('Feature name',featureName(layer));if(n===null)return;if(!n.trim())return;layer.feature.properties.name=n.trim();const k=prompt('Feature type (Plant boundary / Operational zone / Equipment area)',featureType(layer));if(k!==null&&k.trim())layer.feature.properties.kind=k.trim();attachFeature(layer,layer.feature.properties);setDirty();renderList();});
  }
  function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+ function zoneId(layer){return layer.feature?.properties?.zoneId||"";}
+ function assignedFor(layer){return layer.feature?.properties?.assignedPositions||[];}
+ function statusFor(props){const raw=String(props.status||props.operationalStatus||"").toLowerCase();if(/attention|critical|stop|fault|unsafe/.test(raw))return {cls:"bad",label:props.status||"Attention"};if(/review|warning|pending/.test(raw))return {cls:"warn",label:props.status||"Under review"};if(/operational|running|normal/.test(raw))return {cls:"good",label:props.status||"Operational"};return {cls:"",label:"Status not reported"};}
+ function zoneCenter(layer){if(layer.getBounds)return layer.getBounds().getCenter();if(layer.getLatLng)return layer.getLatLng();return null;}
+ function zoneCardHtml(layer){
+  const p=layer.feature?.properties||{},assigned=assignedFor(layer),people=assigned.filter(x=>x.employee&&x.employee!=="Vacant").length,st=statusFor(p),id=zoneId(layer),name=featureName(layer);
+  const roles=assigned.length?assigned.slice(0,2).map(x=>escapeHtml(x.role)+(x.employee&&x.employee!=="Vacant"?" · "+escapeHtml(x.employee):" · Vacant")).join(" / "):"No position linked";
+  return `<div class="zone-card ${selectedZoneId===id?"selected":""}" data-zone-card="${escapeHtml(id)}"><div class="zone-card-top"><span class="zone-dot ${st.cls}"></span><span class="zone-card-name">${escapeHtml(name)}</span></div><div class="zone-card-rule"></div><div class="zone-card-meta">${people} assigned personnel · ${assigned.length} positions</div><div class="zone-card-meta">${roles}</div><div class="zone-card-link">LINKED ZONE · ${escapeHtml(st.label)}</div></div>`;
+ }
+ function zoneDetailsHtml(layer){
+  const p=layer.feature?.properties||{},assigned=assignedFor(layer),st=statusFor(p);
+  return `<div class="zone-details"><h3>${escapeHtml(featureName(layer))}</h3><small>${escapeHtml(featureType(layer))} · ${escapeHtml(zoneId(layer))}</small><div class="zrow"><b>Status:</b> ${escapeHtml(st.label)}</div><div class="zrow"><b>Personnel:</b> ${assigned.filter(x=>x.employee&&x.employee!=="Vacant").length} assigned · ${assigned.length} positions</div>${assigned.map(a=>`<div class="zrow"><b>${escapeHtml(a.role)}</b><br>${escapeHtml(a.employee||"Vacant")}<br><small>${escapeHtml(a.employeeId||"No employee ID")}</small></div>`).join("")||'<div class="zrow">No workforce positions linked.</div>'}<div class="zrow"><small>Tap Workforce → Link site zone to manage assignments.</small></div></div>`;
+ }
+ function renderZoneCards(){
+  zoneCards.clearLayers();const entries=[];drawn.eachLayer(l=>{const c=zoneCenter(l);if(c)entries.push({layer:l,center:c,id:zoneId(l)});});
+  // Offset overlapping cards in screen space; offsets are recalculated after every pan/zoom.
+  const placed=[];
+  entries.forEach((entry,index)=>{
+   const base=map.latLngToLayerPoint(entry.center);let chosen=null;
+   for(let step=0;step<12;step++){const col=step%3,row=Math.floor(step/3);const candidate=L.point(base.x+(col-1)*105,base.y-62-row*52);if(placed.every(q=>candidate.distanceTo(q)>82)){chosen=candidate;break;}}
+   if(!chosen)chosen=L.point(base.x+(index%4)*28,base.y-65-Math.floor(index/4)*48);
+   placed.push(chosen);
+   const ll=map.layerPointToLatLng(chosen),html=zoneCardHtml(entry.layer);
+   const icon=L.divIcon({className:"zone-card-marker",html,iconSize:[158,82],iconAnchor:[79,82]});
+   const marker=L.marker(ll,{icon,keyboard:true,riseOnHover:true,interactive:true,title:featureName(entry.layer)+" zone data card",alt:featureName(entry.layer)+" zone"});
+   marker.on("click",()=>{drawn.eachLayer(x=>{if(x.setStyle){const c=x.feature?.properties?.color||"#35c58b";x.setStyle({weight:3,color:c,fillColor:c,fillOpacity:.18});}});selectedZoneId=entry.id;renderZoneCards();entry.layer.setStyle?.({weight:5,color:"#53b7f3",fillOpacity:.28});entry.layer.bindPopup(zoneDetailsHtml(entry.layer),{maxWidth:320}).openPopup();});
+   zoneCards.addLayer(marker);
+  });
+ }
  function renderList(){
+   renderZoneCards();
    const list=document.getElementById('featureList'),layers=[];drawn.eachLayer(l=>layers.push(l));
    if(!layers.length){list.textContent='No custom zones yet. Enable editing and draw a boundary or zone.';return;}
-   list.innerHTML=layers.map((l,i)=>'<div style="padding:7px 0;border-bottom:1px solid #2b4038"><b>'+(i+1)+'. '+escapeHtml(featureName(l))+'</b><br><span>'+escapeHtml(featureType(l))+'</span></div>').join('');
+   list.innerHTML=layers.map((l,i)=>{const a=l.feature?.properties?.assignedPositions||[];return '<div style="padding:7px 0;border-bottom:1px solid #2b4038"><b>'+(i+1)+'. '+escapeHtml(featureName(l))+'</b><br><span>'+escapeHtml(featureType(l))+' · '+a.length+' positions</span>'+a.map(x=>'<div><small>'+escapeHtml(x.role)+': '+escapeHtml(x.employee)+'</small></div>').join('')+'</div>';}).join('');
  }
  function loadSaved(){
    try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return;const geo=JSON.parse(raw);L.geoJSON(geo,{pointToLayer:(f,latlng)=>L.marker(latlng),onEachFeature:(f,l)=>{attachFeature(l,f.properties||{});drawn.addLayer(l);}});renderList();}catch(e){status.textContent='Could not load saved map data: '+e.message;}
@@ -116,6 +166,8 @@ button:hover,a:hover{background:#25483b}main{padding:16px;max-width:1600px;margi
  document.getElementById('streets').onclick=()=>{if(map.hasLayer(imagery))map.removeLayer(imagery);if(!map.hasLayer(streets))streets.addTo(map)};
  document.getElementById('locate').onclick=()=>map.setView(yard,18);
  loadSaved();
+ window.addEventListener('storage',e=>{if(e.key===STORAGE_KEY){drawn.clearLayers();loadSaved();} });
+ window.addEventListener('planttracker:datachange',()=>{drawn.eachLayer(l=>{const zid=l.feature?.properties?.zoneId;const linked=JSON.parse(localStorage.getItem('plant_tracker_org_hierarchy_v1')||'[]').filter(p=>p.zoneId===zid);l.feature.properties.assignedPositions=linked.map(p=>({positionId:p.id,role:p.role,employee:p.person||'Vacant',employeeId:p.employeeId||''}));attachFeature(l,l.feature.properties);});renderList();renderZoneCards();});
  // Keep drawing controls visible as requested; geometry editing is always available in this prototype.
  editing=true;panel.hidden=false;document.getElementById('editMode').textContent='Hide edit panel';enableEditing();
  document.getElementById('editMode').onclick=()=>{panel.hidden=!panel.hidden;document.getElementById('editMode').textContent=panel.hidden?'Show edit panel':'Hide edit panel';if(!drawControl){enableEditing();}};

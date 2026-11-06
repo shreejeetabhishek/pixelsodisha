@@ -71,3 +71,38 @@ The later integration should replace sample arrays and demo event handlers with 
 - 3D site viewer: full-screen control, orbit/zoom/pan, and user-added illustrative hotspot labels saved locally under `plant_tracker_3d_markers_v1`.
 - Logo is now inline SVG on the standalone viewer pages to avoid broken relative image paths.
 - Important: satellite polygons, engineering-image annotations and 3D hotspots are separate coordinate systems. This frontend update makes drawing/annotation available in each view, but does not yet automatically register one geometry across all three coordinate systems. That requires explicit calibration between the engineering drawing, geographic coordinates and 3D model coordinates. LocalStorage is per browser/device; no Supabase sync or multi-user editing is implemented.
+
+
+## Mobile drawing repair
+- Satellite map uses a single-column mobile layout: the map is full width and the information/edit panel moves below it.
+- Satellite map viewport has a taller mobile height; map attribution wraps within the map.
+- Engineering drawing tools capture touch/pointer events on the SVG overlay itself, preventing the parent pan handler from stealing drawing gestures.
+- Select, Rectangle, Polygon and Pin modes visibly indicate the active tool. Rectangle/Pin use press-drag-release; Polygon uses taps and a double-tap to finish.
+
+
+## Organisation hierarchy and position assignment
+- Workforce now contains a configurable hierarchy with Site VP, Site Head, Site Manager, Site Incharge, Department Head, Department Incharge, Supervisor, Technician, Operator, Electrician, Rigger, Fitter, Welder/Cutter, Driver, Helper, Cleaner and Peon.
+- Position records have IDs, department, parent/reporting position, incumbent and occupied/vacant state.
+- Authorized prototype roles can assign vacant positions, replace/reassign an incumbent, or vacate a position. Each change is persisted in LocalStorage and appears in the Overview coverage summary and History & Audit.
+- The acting-role selector is a prototype testing control, not authentication. Do not use it to grant real permissions.
+- The data is shared among pages in the same browser through LocalStorage and a custom change event. It is not shared across devices/users, and the existing communications, equipment, reports, safety, attendance and approvals sample records are not yet backed by one production database.
+- Before operational use, implement Supabase tables, authenticated employee identities, scoped role grants, RLS, audited server-side assignment functions, and database-backed relationships. Client-side role checks are only for demonstrating the workflow.
+
+
+## Position-to-zone linkage
+- Every satellite-drawn vector feature receives a stable `zoneId` in GeoJSON properties. Position records may reference that `zoneId` and an optional engineering annotation ID.
+- Workforce position actions include **Link site zone / Change zone**. The user selects an existing satellite vector zone and, optionally, its matching engineering-drawing annotation.
+- The Workforce table displays the linked zone. Satellite map popups and the feature list show the positions and current incumbents assigned to each zone.
+- Engineering drawing annotations display the linked position roles and incumbents. This links operational responsibility to the selected drawing annotation; it does not mathematically transform the engineering image geometry into satellite coordinates.
+- Updates use LocalStorage and refresh across open tabs in the same browser. The data is not shared across separate users/devices until moved to a shared backend.
+- Existing feature geometry and IDs are preserved; zone IDs are added to GeoJSON properties where missing. Do not delete existing browser storage during testing.
+
+
+## Floating vector-zone data cards
+- Satellite View renders a dark floating data card for every saved vector zone/feature. Cards are positioned from the feature's geographic centre and recalculate after map pan/zoom; nearby cards receive screen-space offsets to reduce overlap.
+- Cards show zone name, status (only when a status value exists; otherwise explicitly "Status not reported"), assigned personnel count, linked position count and up to two role/incumbent labels.
+- Tapping a card highlights its vector boundary and opens a detailed zone popup with every linked position, employee and employee ID.
+- Engineering Drawing annotations now open a floating data card showing all positions linked to that drawing annotation.
+- Cards are driven by stable `zoneId` / `drawingId` relationships and the same LocalStorage position records. Reassignment updates the records used by both map and drawing cards.
+- The generic 3D illustrative model is not geographically calibrated to the site or the engineering drawing. It remains a separate illustrative view; automatic 3D-to-map geometry synchronization requires a measured model coordinate transform and is not claimed here.
+- All current synchronization remains browser-local. Different devices/users require Supabase and server-side authorization.

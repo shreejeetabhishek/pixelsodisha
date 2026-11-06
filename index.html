@@ -57,6 +57,7 @@
             <div><div class="eyebrow">PLANT OPERATIONS / LIVE VIEW</div><h1>Good morning, Vik <span class="wave">✳</span></h1><p>Here’s what’s happening across your plant today.</p></div>
             <div class="heading-actions"><button class="btn btn-secondary" data-go="reports">＋ New report</button><button class="btn btn-primary" data-go="communications">Open communications <span>↗</span></button></div>
           </div>
+          <section class="panel" id="orgLiveSummary" style="margin-bottom:18px"><div class="panel-heading"><div><h2>Organisation control</h2><p>Live position coverage from Workforce assignments</p></div><button class="text-button" data-go="workforce">Manage hierarchy ↗</button></div><div id="overviewOrgStats" class="org-summary">Loading position coverage…</div></section>
           <div class="stats-grid">
             <article class="stat-card"><div class="stat-top"><span>Plant readiness</span><span class="stat-icon green">◈</span></div><div class="stat-value">82<span>%</span></div><div class="stat-foot"><span class="status-dot green-dot"></span> 9 of 11 areas operational</div><div class="mini-progress"><i style="width:82%"></i></div></article>
             <article class="stat-card"><div class="stat-top"><span>Active workforce</span><span class="stat-icon blue">♙</span></div><div class="stat-value">46<span>/52</span></div><div class="stat-foot"><span class="positive">+3</span> vs previous shift</div><div class="avatar-stack"><i>AS</i><i>RK</i><i>PM</i><i>+43</i></div></article>
@@ -194,6 +195,8 @@
         </section>
 
         <section class="page" id="page-history">
+          <section class="panel" style="margin-bottom:18px"><div class="panel-heading"><div><h2>Organisation change history</h2><p>Assignments, replacements, reassignments and vacancies</p></div></div><div id="orgAuditFeed" class="activity-list"><p class="muted">No organisation changes recorded yet.</p></div></section>
+
           <div class="page-heading"><div><div class="eyebrow">TRACEABILITY</div><h1>History & audit</h1><p>Chronological records of messages, reports and status decisions.</p></div><button class="btn btn-secondary" id="exportHistory">↓ Export sample log</button></div>
           <div class="filter-row"><div class="filter-tabs"><button class="selected">All activity</button><button>Reports</button><button>Approvals</button><button>Messages</button><button>System events</button></div><select><option>Today</option><option>Last 7 days</option></select></div>
           <div class="panel table-panel"><div class="panel-heading"><div><h2>Audit trail</h2><p>Sample immutable-event timeline for prototype illustration</p></div></div><div class="table-wrap"><table><thead><tr><th>TIMESTAMP</th><th>ACTIVITY</th><th>ACTOR</th><th>REFERENCE</th><th>RESULT</th></tr></thead><tbody>

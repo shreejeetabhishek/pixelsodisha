@@ -11,7 +11,7 @@
 header{height:auto;min-height:68px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);background:#10201c;position:sticky;top:0;z-index:5}
 .brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:.12em}.brand img,.brand-mark{width:36px;height:36px;flex:0 0 36px}
 .brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.24em}
-.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:72vw}
 button,a{border:1px solid #385349;background:#1a3028;color:var(--text);border-radius:10px;padding:9px 13px;font:600 13px inherit;text-decoration:none;cursor:pointer}
 button:hover,a:hover{background:#25483b}main{padding:18px;max-width:1500px;margin:auto}
 .heading{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:2px 0 14px}.heading h1{font-size:clamp(20px,3vw,28px);margin:0}.heading p{margin:4px 0 0;color:var(--muted);font-size:13px}
@@ -19,7 +19,7 @@ button:hover,a:hover{background:#25483b}main{padding:18px;max-width:1500px;margi
 .viewer.dragging{cursor:grabbing}.stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transform-origin:center;will-change:transform}
 .stage img{display:block;max-width:none;max-height:none;width:auto;height:auto;user-select:none;-webkit-user-drag:none;pointer-events:none}
 .hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);padding:7px 11px;background:#0c1714dd;border:1px solid #52665d;border-radius:30px;color:#d7e2dc;font-size:11px;white-space:nowrap;pointer-events:none}
-@media(max-width:600px){header{padding:10px 12px}.brand{font-size:12px}.actions{gap:5px}.actions button,.actions a{padding:8px 9px;font-size:12px}main{padding:12px}.heading{display:block}.viewer{height:calc(100dvh - 180px);min-height:320px}}
+@media(max-width:600px){header{padding:10px 12px;align-items:flex-start;flex-direction:column}.actions{max-width:100%;justify-content:flex-start}.brand{font-size:12px}.actions{gap:5px}.actions button,.actions a{padding:8px 9px;font-size:12px}main{padding:12px}.heading{display:block}.viewer{height:calc(100dvh - 180px);min-height:320px}}
 </style>
 </head>
 <body>
@@ -32,7 +32,7 @@ button:hover,a:hover{background:#25483b}main{padding:18px;max-width:1500px;margi
 <main>
   <div class="heading"><div><h1>Engineering drawing</h1><p>F_D1.jpg · Pan by dragging, zoom with controls or pinch on touchscreens.</p></div></div>
   <section class="viewer" id="viewer" aria-label="Zoomable engineering drawing">
-    <div class="stage" id="stage"><img id="drawing" src="F_D1.jpg" alt="Original plant engineering process flow drawing"><svg id="drawingOverlay" viewBox="0 0 1000 1000" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none"></svg></div>
+    <div class="stage" id="stage"><img id="drawing" src="F_D1.jpg" alt="Original plant engineering process flow drawing"><svg id="drawingOverlay" viewBox="0 0 1000 1000" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none"></svg><div id="drawingZoneCard" hidden style="position:absolute;z-index:20;right:12px;top:12px;max-width:min(310px,calc(100% - 24px));background:#111a27;border:1px solid #435367;border-radius:13px;padding:13px;color:#eef5f1;box-shadow:0 8px 24px #0008;font:13px/1.45 system-ui"></div></div>
     <div class="hint">Drag to pan · Pinch or use ＋ / − to zoom</div>
   </section>
 </main>
@@ -47,26 +47,41 @@ button:hover,a:hover{background:#25483b}main{padding:18px;max-width:1500px;margi
  document.getElementById('fit').onclick=fit;document.getElementById('plus').onclick=()=>zoom(1.25);document.getElementById('minus').onclick=()=>zoom(.8);
  document.getElementById('rotate').onclick=()=>{rotation=(rotation+90)%360;fit()};
  viewer.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.12:.89)},{passive:false});
- viewer.addEventListener('pointerdown',e=>{viewer.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,ox:x,oy:y};if(pointers.size===2){const a=[...pointers.values()];pinchStart={dist:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),scale};}viewer.classList.add('dragging')});
+ viewer.addEventListener('pointerdown',e=>{if(e.target.closest('#drawingOverlay')&&mode!=='select')return;viewer.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,ox:x,oy:y};if(pointers.size===2){const a=[...pointers.values()];pinchStart={dist:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),scale};}viewer.classList.add('dragging')});
  viewer.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&drag){x=drag.ox+(e.clientX-drag.x);y=drag.oy+(e.clientY-drag.y);render()}else if(pointers.size===2&&pinchStart){const a=[...pointers.values()];const d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);scale=Math.max(.12,Math.min(8,pinchStart.scale*d/pinchStart.dist));render()}});
  function end(e){pointers.delete(e.pointerId);if(pointers.size<2)pinchStart=null;if(!pointers.size){drag=null;viewer.classList.remove('dragging')}else if(pointers.size===1){const p=[...pointers.values()][0];drag={x:p.x,y:p.y,ox:x,oy:y}}}
  viewer.addEventListener('pointerup',end);viewer.addEventListener('pointercancel',end);
 
  const overlay=document.getElementById('drawingOverlay'),KEY='plant_tracker_engineering_annotations_v1';
  let mode='select',drawing=false,points=[],annotations=[];
- try{annotations=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){annotations=[]}
- function redraw(){overlay.innerHTML='';annotations.forEach((a,i)=>{let el;if(a.type==='rect'){el=document.createElementNS('http://www.w3.org/2000/svg','rect');el.setAttribute('x',a.x);el.setAttribute('y',a.y);el.setAttribute('width',a.w);el.setAttribute('height',a.h);el.setAttribute('fill','#35a7ff22');el.setAttribute('stroke','#168cff');el.setAttribute('stroke-width','4')}else if(a.type==='pin'){el=document.createElementNS('http://www.w3.org/2000/svg','circle');el.setAttribute('cx',a.x);el.setAttribute('cy',a.y);el.setAttribute('r','10');el.setAttribute('fill','#e3a63f');el.setAttribute('stroke','#fff');el.setAttribute('stroke-width','3')}else{el=document.createElementNS('http://www.w3.org/2000/svg','polygon');el.setAttribute('points',a.points.map(p=>p.join(',')).join(' '));el.setAttribute('fill','#35a7ff22');el.setAttribute('stroke','#168cff');el.setAttribute('stroke-width','4')}el.style.pointerEvents='auto';el.style.cursor='pointer';el.addEventListener('click',e=>{if(mode==='select'){e.stopPropagation();const name=prompt('Feature name',a.name||'Drawing feature');if(name!==null){a.name=name;saveAnnotations();}}});overlay.appendChild(el);});}
- function saveAnnotations(){localStorage.setItem(KEY,JSON.stringify(annotations));redraw()}
+ try{annotations=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){annotations=[]} annotations.forEach((a,i)=>{if(!a.id)a.id='DRAW-'+String(i+1).padStart(3,'0')});
+ function redraw(){overlay.innerHTML='';annotations.forEach((a,i)=>{let el;if(a.type==='rect'){el=document.createElementNS('http://www.w3.org/2000/svg','rect');el.setAttribute('x',a.x);el.setAttribute('y',a.y);el.setAttribute('width',a.w);el.setAttribute('height',a.h);el.setAttribute('fill','#35a7ff22');el.setAttribute('stroke','#168cff');el.setAttribute('stroke-width','4')}else if(a.type==='pin'){el=document.createElementNS('http://www.w3.org/2000/svg','circle');el.setAttribute('cx',a.x);el.setAttribute('cy',a.y);el.setAttribute('r','10');el.setAttribute('fill','#e3a63f');el.setAttribute('stroke','#fff');el.setAttribute('stroke-width','3')}else{el=document.createElementNS('http://www.w3.org/2000/svg','polygon');el.setAttribute('points',a.points.map(p=>p.join(',')).join(' '));el.setAttribute('fill','#35a7ff22');el.setAttribute('stroke','#168cff');el.setAttribute('stroke-width','4')}el.style.pointerEvents='auto';el.style.cursor='pointer';el.addEventListener('click',e=>{e.stopPropagation();if(mode==='select'){showDrawingCard(a);}});overlay.appendChild(el);
+ const linked=JSON.parse(localStorage.getItem('plant_tracker_org_hierarchy_v1')||'[]').filter(p=>p.drawingId===a.id);
+ if(linked.length){const label=document.createElementNS('http://www.w3.org/2000/svg','text');label.setAttribute('x',a.type==='rect'?a.x+8:a.type==='pin'?a.x+14:Math.min(...a.points.map(p=>p[0]))+8);label.setAttribute('y',a.type==='rect'?a.y+20:a.type==='pin'?a.y-12:Math.min(...a.points.map(p=>p[1]))+20);label.setAttribute('fill','#075b42');label.setAttribute('font-size','17');label.setAttribute('font-weight','700');label.textContent=linked.slice(0,2).map(p=>p.role+': '+(p.person||'Vacant')).join(' | ');label.style.pointerEvents='none';overlay.appendChild(label);}
+ });}
+
+ function showDrawingCard(a){
+  const card=document.getElementById('drawingZoneCard'),positions=JSON.parse(localStorage.getItem('plant_tracker_org_hierarchy_v1')||'[]').filter(p=>p.drawingId===a.id);
+  const esc=v=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  card.hidden=false;card.innerHTML=`<button id="closeDrawingCard" style="float:right;padding:3px 8px">×</button><b style="font-size:15px">${esc(a.name||'Drawing zone')}</b><div style="color:#a7b8b0;font-size:11px">${esc(a.id)} · ${esc(a.type)}</div><hr style="border:0;border-top:1px solid #34463f"><b>Assigned positions (${positions.length})</b>${positions.length?positions.map(p=>`<div style="padding:6px 0;border-top:1px solid #34463f"><b>${esc(p.role)}</b><br>${esc(p.person||'Vacant')} · ${esc(p.employeeId||'No employee ID')}<br><small>Department: ${esc(p.dept)} · Reports to: ${esc(p.parent||'—')}</small></div>`).join(''):'<p style="color:#a7b8b0">No workforce position linked to this drawing annotation.</p>'}<p style="color:#a7b8b0;font-size:11px">Assignments are managed in Workforce → Link site zone.</p>`;
+  document.getElementById('closeDrawingCard').onclick=()=>card.hidden=true;
+ }
+ function saveAnnotations(){localStorage.setItem(KEY,JSON.stringify(annotations));redraw();window.dispatchEvent(new CustomEvent('planttracker:datachange',{detail:{type:'drawing-annotations'}}));}
  function svgPoint(e){const r=overlay.getBoundingClientRect();return [(e.clientX-r.left)/r.width*1000,(e.clientY-r.top)/r.height*1000]}
- overlay.style.pointerEvents='auto';
- overlay.addEventListener('pointerdown',e=>{if(mode==='select')return;e.preventDefault();const p=svgPoint(e);if(mode==='rect'||mode==='pin'){drawing={start:p};}else{points.push(p);if(points.length>=3&&e.detail>=2){const name=prompt('Name this drawing zone','New zone');if(name!==null)annotations.push({type:'poly',points:points,name});points=[];saveAnnotations();}}});
- overlay.addEventListener('pointerup',e=>{if(!drawing)return;const p=svgPoint(e),a=drawing.start; if(mode==='rect'){const name=prompt('Name this drawing area','New area');if(name!==null)annotations.push({type:'rect',x:Math.min(a[0],p[0]),y:Math.min(a[1],p[1]),w:Math.abs(p[0]-a[0]),h:Math.abs(p[1]-a[1]),name});}else if(mode==='pin'){const name=prompt('Name this drawing marker','Equipment marker');if(name!==null)annotations.push({type:'pin',x:a[0],y:a[1],name});}drawing=false;saveAnnotations();});
- document.getElementById('toolSelect').onclick=()=>mode='select';
- document.getElementById('toolRect').onclick=()=>{mode='rect';points=[]};
- document.getElementById('toolPoly').onclick=()=>{mode='poly';points=[];alert('Tap at least three polygon corners, then double-tap the last corner to finish.')};
- document.getElementById('toolPin').onclick=()=>mode='pin';
+ overlay.style.pointerEvents='auto';overlay.style.touchAction='none';
+ overlay.addEventListener('pointerdown',e=>{if(mode==='select')return;e.preventDefault();e.stopPropagation();overlay.setPointerCapture(e.pointerId);const p=svgPoint(e);if(mode==='rect'||mode==='pin'){drawing={start:p};}else{points.push(p);if(points.length>=3&&e.detail>=2){const name=prompt('Name this drawing zone','New zone');if(name!==null)annotations.push({id:'DRAW-'+Date.now(),type:'poly',points:points,name});points=[];saveAnnotations();}}});
+ overlay.addEventListener('pointerup',e=>{if(!drawing)return;e.preventDefault();e.stopPropagation();const p=svgPoint(e),a=drawing.start; if(mode==='rect'){const name=prompt('Name this drawing area','New area');if(name!==null)annotations.push({id:'DRAW-'+Date.now(),type:'rect',x:Math.min(a[0],p[0]),y:Math.min(a[1],p[1]),w:Math.abs(p[0]-a[0]),h:Math.abs(p[1]-a[1]),name});}else if(mode==='pin'){const name=prompt('Name this drawing marker','Equipment marker');if(name!==null)annotations.push({id:'DRAW-'+Date.now(),type:'pin',x:a[0],y:a[1],name});}drawing=false;saveAnnotations();});
+ document.getElementById('toolSelect').onclick=()=>setMode('select');
+ document.getElementById('toolRect').onclick=()=>{setMode('rect');points=[]};
+ document.getElementById('toolPoly').onclick=()=>{setMode('poly');points=[];alert('Tap at least three polygon corners, then double-tap the last corner to finish.')};
+ document.getElementById('toolPin').onclick=()=>setMode('pin');
  document.getElementById('fullscreen').onclick=async()=>{try{if(!document.fullscreenElement)await viewer.requestFullscreen();else await document.exitFullscreen();}catch(e){}};
- redraw();
+
+ function setMode(next){mode=next;['toolSelect','toolRect','toolPoly','toolPin'].forEach(id=>{const b=document.getElementById(id);b.style.outline=(id==='tool'+next[0].toUpperCase()+next.slice(1))?'2px solid #8dd4aa':'none';});viewer.style.cursor=next==='select'?'grab':'crosshair';}
+ overlay.addEventListener('pointercancel',()=>{drawing=false;points=[];});
+ overlay.addEventListener('lostpointercapture',()=>{drawing=false;});
+
+ setMode('select');redraw();window.addEventListener('storage',ev=>{if(ev.key==='plant_tracker_org_hierarchy_v1'||ev.key===KEY)redraw();});
 
  window.addEventListener('resize',()=>{if(scale<=1.01)fit()});
 })();
