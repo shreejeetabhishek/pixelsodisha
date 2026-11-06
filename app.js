@@ -2,10 +2,23 @@ const $ = (s, root=document) => root.querySelector(s);
 const $$ = (s, root=document) => [...root.querySelectorAll(s)];
 const pageNames = {overview:"Overview",communications:"Communications",reports:"Reports",workforce:"Workforce",equipment:"Equipment",safety:"Safety",approvals:"Approvals",shifts:"Shifts & handover",map:"Plant map",history:"History & audit"};
 function showToast(message){const t=$("#toast");t.textContent=message;t.classList.add("show");clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>t.classList.remove("show"),2600)}
-function go(page){$$(".page").forEach(p=>p.classList.toggle("active",p.id===`page-${page}`));$$(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.page===page));$("#pageCrumb").textContent=pageNames[page]||"Overview";$("#sidebar").classList.remove("open");window.scrollTo(0,0)}
+function go(page){$$(".page").forEach(p=>p.classList.toggle("active",p.id===`page-${page}`));$$(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.page===page));$("#pageCrumb").textContent=pageNames[page]||"Overview";setSidebarOpen(false);window.scrollTo(0,0)}
 $("#mainNav").addEventListener("click",e=>{const b=e.target.closest("[data-page]");if(b)go(b.dataset.page)});
 $$("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
-$("#mobileMenu").addEventListener("click",()=>$("#sidebar").classList.toggle("open"));
+const sidebar=$("#sidebar"),sidebarBackdrop=$("#sidebarBackdrop"),mobileMenu=$("#mobileMenu");
+function setSidebarOpen(open){
+  sidebar.classList.toggle("open",open);
+  sidebarBackdrop.classList.toggle("visible",open);
+  document.body.classList.toggle("sidebar-open",open);
+  mobileMenu.setAttribute("aria-expanded",String(open));
+  mobileMenu.setAttribute("aria-label",open?"Close navigation":"Open navigation");
+}
+mobileMenu.setAttribute("aria-controls","sidebar");
+mobileMenu.setAttribute("aria-expanded","false");
+mobileMenu.addEventListener("click",()=>setSidebarOpen(!sidebar.classList.contains("open")));
+sidebarBackdrop.addEventListener("click",()=>setSidebarOpen(false));
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&sidebar.classList.contains("open"))setSidebarOpen(false)});
+window.addEventListener("resize",()=>{if(window.innerWidth>850)setSidebarOpen(false)});
 $("#profileMenu").addEventListener("click",()=>showToast("Profile and role switching are simulated in this prototype."));
 const chatData={
  announcements:{title:"Plant announcements",sub:"Official · Plant-wide · 52 members",avatar:"↗",cls:"purple-bg",pin:"All shift supervisors must submit area readiness before 01:30 PM.",messages:[["VK","Vik Kumar","Plant Manager","09:05 AM","Good morning team. Please ensure all area inspections and equipment status reports are submitted before shift handover.",""],["AS","Anil Sahu","Supervisor","09:22 AM","Crusher House Floor 1 inspection completed. No new observations.","Area inspection report"]]},
