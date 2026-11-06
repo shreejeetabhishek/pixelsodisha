@@ -33,7 +33,7 @@ model-viewer{width:100%;height:100%;background:transparent;--poster-color:transp
 <span class="tag">OPEN-SOURCE · CC0 1.0</span>
 <h2 style="margin-top:12px">Ore Processing and Haulage Plant</h2>
 <p class="muted">Complete starter scene · 56 model components</p>
-<div class="controls"><button id="fullscreen">⛶ Full screen</button><button id="addPin">Add site marker</button><button id="clearPins">Clear markers</button><button id="reset">Reset view</button><button id="spin">Pause rotation</button><button id="fullscreen">Full screen</button></div>
+<div class="controls"><button id="fullscreen">⛶ Full screen</button><button id="addPin">Add site marker</button><button id="clearPins">Clear markers</button><button id="reset">Reset view</button><button id="spin">Pause rotation</button></div>
 <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
 <p class="note"><b>Included in the scene</b><br>Truck dump pocket, crushing, conveyors, milling and separation, storage, stockpile, rail loadout and site services.</p>
 <p class="note"><b>Controls</b><br>Drag to orbit · scroll or pinch to zoom · two-finger drag to pan. Use the controls above to reset or enter full screen.</p>
@@ -54,6 +54,6 @@ document.getElementById('fullscreen').onclick=async()=>{const el=document.queryS
 renderPins();
 document.getElementById('reset').onclick=()=>{mv.cameraOrbit='auto auto auto';mv.cameraTarget='auto auto auto';mv.fieldOfView='auto';};
 document.getElementById('spin').onclick=e=>{mv.autoRotate=!mv.autoRotate;e.currentTarget.textContent=mv.autoRotate?'Pause rotation':'Start rotation';};
-document.getElementById('fullscreen').onclick=()=>{const el=document.querySelector('.viewer');if(el.requestFullscreen)el.requestFullscreen();};
+
 </script>
 </body></html>

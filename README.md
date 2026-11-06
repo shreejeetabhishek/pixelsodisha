@@ -106,3 +106,28 @@ The later integration should replace sample arrays and demo event handlers with 
 - Cards are driven by stable `zoneId` / `drawingId` relationships and the same LocalStorage position records. Reassignment updates the records used by both map and drawing cards.
 - The generic 3D illustrative model is not geographically calibrated to the site or the engineering drawing. It remains a separate illustrative view; automatic 3D-to-map geometry synchronization requires a measured model coordinate transform and is not claimed here.
 - All current synchronization remains browser-local. Different devices/users require Supabase and server-side authorization.
+
+
+## Engineering drawing editor restoration
+- Replaced the basic prompt-driven drawing interaction with a proper editor toolbar: Select/Move, Line, Rectangle, Polygon, Marker, Finish Polygon, Rename, Delete and Undo.
+- Line and rectangle are drawn by dragging. Polygon is created by tapping its corners and pressing Finish Polygon. Marker is placed with one tap.
+- Select/Move lets the user select and drag existing annotations. Rename/Delete act on the selected annotation. Undo restores the previous saved geometry snapshot.
+- Drawing annotations retain stable IDs, so existing Workforce `drawingId` associations and drawing-zone data cards continue to reference the same features.
+- Mouse and touch pointer events are handled on the SVG drawing overlay; two-finger gestures remain available for viewer navigation.
+- Existing annotation data in `plant_tracker_engineering_annotations_v1` is loaded without clearing or replacing it.
+
+
+## Prototype readiness check (static checks performed)
+The final package was checked before delivery:
+- ZIP archive integrity: passed (`testzip` returned no corrupt member).
+- JavaScript syntax: passed for `app.js` and inline scripts in the 3D, engineering drawing and satellite pages using Node.js syntax checks.
+- HTML IDs: duplicate IDs removed; a final scan found no duplicate IDs in the HTML pages.
+- Local asset references: checked for missing local `src`/`href` references.
+- Engineering drawing image: `F_D1.jpg` is included at repository root and referenced by `engineering-drawing.html`.
+- Drawing editor: tool handlers and SVG overlay are present for Select/Move, Line, Rectangle, Polygon, Marker, Finish Polygon, Rename, Delete and Undo. Annotation data remains in `plant_tracker_engineering_annotations_v1`.
+- Workforce/map/drawing linkage: uses `plant_tracker_org_hierarchy_v1`, `plant_tracker_map_features_v1` and `plant_tracker_engineering_annotations_v1`; same-tab custom events and cross-tab storage events refresh the relevant drawing/map displays.
+- 3D page: duplicate full-screen control ID was removed. The 3D viewer library and illustrative GLB are remote dependencies and require internet access.
+- Satellite page: Leaflet and Esri imagery are remote dependencies and require internet access.
+
+## Important scope of this readiness check
+This is a static and source-level prototype check, not a production certification. A real browser/device end-to-end run could not be completed in this environment because a Playwright browser binary was not installed. Test the final ZIP on the target Android phone and desktop browser before operational use. All data is browser-local; this package does not provide multi-user Supabase synchronisation, authentication, role enforcement, or production audit guarantees. The illustrative 3D scene is not a surveyed model of the Angul plant and is not geometrically registered to satellite or engineering coordinates.
