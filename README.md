@@ -131,3 +131,11 @@ The final package was checked before delivery:
 
 ## Important scope of this readiness check
 This is a static and source-level prototype check, not a production certification. A real browser/device end-to-end run could not be completed in this environment because a Playwright browser binary was not installed. Test the final ZIP on the target Android phone and desktop browser before operational use. All data is browser-local; this package does not provide multi-user Supabase synchronisation, authentication, role enforcement, or production audit guarantees. The illustrative 3D scene is not a surveyed model of the Angul plant and is not geometrically registered to satellite or engineering coordinates.
+
+
+## Engineering drawing responsiveness update
+- Drawing previews now update only the active SVG shape instead of rebuilding the entire annotation layer on every pointer movement.
+- Moving an existing annotation uses a temporary SVG transform during the drag; geometry is committed and saved once on pointer release.
+- Hierarchy assignments are read once per redraw rather than once for every annotation.
+- New shapes are created immediately with a default name; use Rename after placement instead of blocking the drawing gesture with a browser prompt.
+- These changes reduce repeated DOM creation, LocalStorage reads and JSON cloning during touch/mouse movement, especially on mobile devices.
